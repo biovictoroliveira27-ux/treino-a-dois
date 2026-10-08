@@ -23,7 +23,13 @@ jobs:
           gradle-version: "8.9"
 
       - name: Compilar
-        run: gradle assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
+            msg=$(grep -A 25 -E "What went wrong|error:|ERROR:" build.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=Erro na compilacao::$msg"
+            exit 1
+          }
 
       - name: Renomear
         run: cp app/build/outputs/apk/debug/app-debug.apk TreinoADois.apk
