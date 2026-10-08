@@ -177,33 +177,7 @@ body.m-ela .dot.ele, body.m-ele .dot.ela{display:none}
 
 <script>
 const DAYS = [
- {id:"qui", dow:4, chip:"Qui · A", sub:"Pernas", eyebrow:"Dia 1 · Quinta", title:"A · Inferiores", focus:"Quadríceps e glúteo", time:"≈ 50 min + cardio",
-  note:"<b>Encaixe:</b> o Pallof e a prancha dela (7 e 8) são feitos nos descansos longos dele no agachamento e no búlgaro.",
-  ex:[
-  {n:"Agachamento",
-   ela:{v:"Goblet (halter junto ao peito)",s:"3 × 12",d:"desc. 60s",t:"Halter colado ao peito e peito aberto. Desça só até onde a lombar continua neutra, sem arredondar no fundo. Joelhos na direção da ponta dos pés."},
-   ele:{v:"Livre com barra",s:"4 × 6–10",d:"desc. 2–3 min",t:"Cadência 3-1-1: 3s descendo, 1s de pausa no fundo, sobe forte. Desça abaixo do paralelo enquanto a lombar se mantiver neutra."}},
-  {n:"Afundo",
-   ela:{v:"Afundo estático, peso do corpo ou halteres leves",s:"3 × 12/perna",d:"desc. 45–60s",t:"Tronco alto e abdômen firme. Pode segurar num apoio para focar só na perna. O joelho de trás desce reto em direção ao chão."},
-   ele:{v:"Búlgaro com halteres (pé de trás no banco)",s:"3 × 8–10/perna",d:"desc. 90s",t:"Passo longo e tronco levemente à frente para mais glúteo. Desça em 3s até alongar bem a frente do quadril de trás."}},
-  {n:"Leg press 45°",
-   ela:{s:"3 × 15",d:"desc. 60s",t:"Lombar e quadril colados no encosto o tempo todo. Pare a descida antes de o quadril descolar do banco."},
-   ele:{s:"3 × 10–12",d:"desc. 90s–2 min",t:"Pés na largura do quadril, no meio da plataforma. Amplitude máxima sem o quadril sair do banco. Não trave os joelhos em cima."}},
-  {n:"Cadeira extensora",
-   ela:{s:"3 × 15",d:"desc. 45s",t:"Costas apoiadas, mãos nas alças. Suba controlando, sem trancos."},
-   ele:{s:"3 × 10–12 + drop-set na última",d:"desc. 60–90s",t:"Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."}},
-  {n:"Elevação pélvica (hip thrust)",
-   ela:{s:"4 × 12–15",d:"desc. 60s",t:"Queixo levemente para o peito e costelas para baixo. Suba até alinhar quadril e tronco e pare ali: não arqueie a lombar no topo. Quem sobe é o glúteo."},
-   ele:{s:"3 × 8–12",d:"desc. 90s",t:"Pausa de 2s no topo apertando o glúteo. Canelas verticais no ponto alto."}},
-  {n:"Panturrilha em pé",
-   ela:{s:"3 × 15–20",d:"desc. 30–45s",t:"Movimento completo e sem pressa."},
-   ele:{s:"3 × 10–15",d:"desc. 60s",t:"Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."}},
-  {n:"Pallof press (polia ou elástico)",
-   ela:{s:"3 × 10/lado",d:"no descanso dele",t:"De lado para a polia, braços estendidos à frente do peito. Não deixe o tronco girar. Ensina o core a proteger a coluna contra rotação."}},
-  {n:"Prancha frontal",
-   ela:{s:"3 × 30–40s",d:"no descanso dele",t:"Glúteo contraído e costelas para baixo; o quadril não pode cair. Se a lombar incomodar, apoie os joelhos."}}
- ]},
- {id:"sex", dow:5, chip:"Sex · B", sub:"Empurrar", eyebrow:"Dia 2 · Sexta", title:"B · Empurrar", focus:"Peito, ombro e tríceps", time:"≈ 45 min + cardio",
+ {id:"qui", dow:4, chip:"Qui · A", sub:"Empurrar", eyebrow:"Dia 1 · Quinta", title:"A · Empurrar", focus:"Peito, ombro e tríceps", time:"≈ 45 min + cardio",
   note:"<b>Equilíbrio postural:</b> para cada empurrar, ela faz um puxar ou abrir de peito (face pull e anjo na parede) para não reforçar ombros caídos para a frente.",
   ex:[
   {n:"Supino reto",
@@ -229,6 +203,32 @@ const DAYS = [
    ele:{s:"2 × 15",d:"desc. 45s",t:"Protege o ombro para aguentar o volume de supino. Carga leve, contração no final."}},
   {n:"Anjo na parede",
    ela:{s:"2 × 10",d:"no descanso dele",t:"Cabeça, costas e lombar encostadas na parede. Deslize os braços para cima sem desencostar. Abre o peito e melhora a mobilidade torácica."}}
+ ]},
+ {id:"sex", dow:5, chip:"Sex · B", sub:"Pernas", eyebrow:"Dia 2 · Sexta", title:"B · Inferiores", focus:"Quadríceps e glúteo", time:"≈ 50 min + cardio",
+  note:"<b>Encaixe:</b> o Pallof e a prancha dela (7 e 8) são feitos nos descansos longos dele no agachamento e no búlgaro.",
+  ex:[
+  {n:"Agachamento",
+   ela:{v:"Goblet (halter junto ao peito)",s:"3 × 12",d:"desc. 60s",t:"Halter colado ao peito e peito aberto. Desça só até onde a lombar continua neutra, sem arredondar no fundo. Joelhos na direção da ponta dos pés."},
+   ele:{v:"Livre com barra",s:"4 × 6–10",d:"desc. 2–3 min",t:"Cadência 3-1-1: 3s descendo, 1s de pausa no fundo, sobe forte. Desça abaixo do paralelo enquanto a lombar se mantiver neutra."}},
+  {n:"Afundo",
+   ela:{v:"Afundo estático, peso do corpo ou halteres leves",s:"3 × 12/perna",d:"desc. 45–60s",t:"Tronco alto e abdômen firme. Pode segurar num apoio para focar só na perna. O joelho de trás desce reto em direção ao chão."},
+   ele:{v:"Búlgaro com halteres (pé de trás no banco)",s:"3 × 8–10/perna",d:"desc. 90s",t:"Passo longo e tronco levemente à frente para mais glúteo. Desça em 3s até alongar bem a frente do quadril de trás."}},
+  {n:"Leg press 45°",
+   ela:{s:"3 × 15",d:"desc. 60s",t:"Lombar e quadril colados no encosto o tempo todo. Pare a descida antes de o quadril descolar do banco."},
+   ele:{s:"3 × 10–12",d:"desc. 90s–2 min",t:"Pés na largura do quadril, no meio da plataforma. Amplitude máxima sem o quadril sair do banco. Não trave os joelhos em cima."}},
+  {n:"Cadeira extensora",
+   ela:{s:"3 × 15",d:"desc. 45s",t:"Costas apoiadas, mãos nas alças. Suba controlando, sem trancos."},
+   ele:{s:"3 × 10–12 + drop-set na última",d:"desc. 60–90s",t:"Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."}},
+  {n:"Elevação pélvica (hip thrust)",
+   ela:{s:"4 × 12–15",d:"desc. 60s",t:"Queixo levemente para o peito e costelas para baixo. Suba até alinhar quadril e tronco e pare ali: não arqueie a lombar no topo. Quem sobe é o glúteo."},
+   ele:{s:"3 × 8–12",d:"desc. 90s",t:"Pausa de 2s no topo apertando o glúteo. Canelas verticais no ponto alto."}},
+  {n:"Panturrilha em pé",
+   ela:{s:"3 × 15–20",d:"desc. 30–45s",t:"Movimento completo e sem pressa."},
+   ele:{s:"3 × 10–15",d:"desc. 60s",t:"Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."}},
+  {n:"Pallof press (polia ou elástico)",
+   ela:{s:"3 × 10/lado",d:"no descanso dele",t:"De lado para a polia, braços estendidos à frente do peito. Não deixe o tronco girar. Ensina o core a proteger a coluna contra rotação."}},
+  {n:"Prancha frontal",
+   ela:{s:"3 × 30–40s",d:"no descanso dele",t:"Glúteo contraído e costelas para baixo; o quadril não pode cair. Se a lombar incomodar, apoie os joelhos."}}
  ]},
  {id:"sab", dow:6, chip:"Sáb · C", sub:"Puxar", eyebrow:"Dia 3 · Sábado", title:"C · Puxar", focus:"Costas, bíceps e posterior de ombro", time:"≈ 45 min + cardio",
   note:"<b>Dia da postura:</b> ela fecha com o “Big 3” de McGill (7, 8 e 9), a sequência mais estudada para resistência do core e proteção da lombar.",
@@ -260,7 +260,7 @@ const DAYS = [
    ele:{s:"3 × 12–15",d:"desc. 60s",t:"Ajoelhado, enrole o tronco trazendo as costelas em direção ao quadril."}}
  ]},
  {id:"dom", dow:0, chip:"Dom · FB1", sub:"Fullbody", eyebrow:"Dia 4 · Domingo", title:"Fullbody 1", focus:"Posterior de coxa, glúteo, peito e ombro", time:"≈ 50 min + cardio",
-  note:"<b>Sem costas hoje:</b> foram treinadas ontem. O domingo repete peito e ombro (48h depois de sexta) e trabalha o quadril em dobradiça.",
+  note:"<b>Sem costas hoje:</b> foram treinadas ontem. O domingo repete peito e ombro (72h depois de quinta) e trabalha o quadril em dobradiça.",
   ex:[
   {n:"Levantamento terra romeno (stiff)",
    ela:{v:"Com halteres, carga leve a moderada",s:"3 × 10–12",d:"desc. 60–90s",t:"Empurre o quadril para trás como se fechasse uma porta com o bumbum, halteres raspando as coxas. Desça só até onde a lombar continua reta (em geral até o joelho ou o meio da canela). Se a lombar doer, troque pela mesa flexora."},
@@ -325,13 +325,13 @@ const aquecer = `<section class="view" id="v-aquecer" hidden>
       </ol></div>
     <div class="blk ele"><h4>Ele · amplitude para hipertrofia (≈ 8 min)</h4>
       <p><b>Bike ou elíptico leve</b> · 3–5 min</p>
-      <p><b>Dias com pernas (Qui, Dom, Seg)</b></p>
+      <p><b>Dias com pernas (Sex, Dom, Seg)</b></p>
       <ul>
         <li><b>Agachamento goblet com pausa de 3s no fundo</b> · 8. Abre quadril e tornozelo.</li>
         <li><b>Afundo com rotação de tronco</b> · 5/lado.</li>
         <li><b>Balanço de perna frontal e lateral</b> · 10/lado.</li>
       </ul>
-      <p style="margin-top:8px"><b>Dias com superiores (Sex, Sáb, Dom, Seg)</b></p>
+      <p style="margin-top:8px"><b>Dias com superiores (Qui, Sáb, Dom, Seg)</b></p>
       <ul>
         <li><b>Passagem de ombro com bastão ou elástico</b> · 10.</li>
         <li><b>Rotação externa com elástico</b> · 15/lado.</li>
@@ -347,15 +347,15 @@ const cardio = `<section class="view" id="v-cardio" hidden>
   <div class="sec">
     <div class="blk ela"><h4>Ela · máxima queima com baixo impacto</h4>
       <ul>
-        <li><b>Qui, Sáb e Dom:</b> 15–20 min contínuo, em zona 2 (consegue falar frases curtas, mas não cantar). Esteira com inclinação de 6–10% a 5–6 km/h <i>sem segurar no corrimão</i>, bike ou elíptico.</li>
-        <li><b>Sex e Seg:</b> intervalado na bike: 8 × (30s forte + 60s leve), ≈ 12 min com 2 min de volta à calma. No “forte”, fala no máximo 2–3 palavras.</li>
+        <li><b>Sex, Sáb e Dom:</b> 15–20 min contínuo, em zona 2 (consegue falar frases curtas, mas não cantar). Esteira com inclinação de 6–10% a 5–6 km/h <i>sem segurar no corrimão</i>, bike ou elíptico.</li>
+        <li><b>Qui e Seg:</b> intervalado na bike: 8 × (30s forte + 60s leve), ≈ 12 min com 2 min de volta à calma. No “forte”, fala no máximo 2–3 palavras.</li>
         <li><b>Ter e Qua (descanso):</b> caminhada ao ar livre de 30–40 min. É recuperação ativa, não treino.</li>
         <li><b>Todos os dias:</b> meta de 8–10 mil passos. É o que mais soma gasto calórico ao longo da semana.</li>
         <li><b>Evite por enquanto:</b> corrida intensa, saltos e remo ergômetro pesado. Impacto e flexão repetida da coluna não compensam no início.</li>
       </ul></div>
     <div class="blk ele"><h4>Ele · saúde cardiovascular sem roubar massa</h4>
       <ul>
-        <li><b>2 a 3 vezes por semana</b> (de preferência Sex e Sáb): 10–15 min leves na bike ou caminhada, em zona 2.</li>
+        <li><b>2 a 3 vezes por semana</b> (de preferência Qui e Sáb): 10–15 min leves na bike ou caminhada, em zona 2.</li>
         <li><b>Nunca antes do treino de pernas</b> e sem intervalado de alta intensidade: compete com a recuperação das pernas.</li>
         <li><b>Passos:</b> 6–8 mil por dia está ótimo.</li>
         <li>Enquanto ela faz os minutos extras, ele pode fazer o abdominal opcional ou alongamento leve.</li>
@@ -364,7 +364,7 @@ const cardio = `<section class="view" id="v-cardio" hidden>
   </div>
 </section>`;
 
-const week = [["Qui","A · Pernas"],["Sex","B · Empurrar"],["Sáb","C · Puxar"],["Dom","FB1"],["Seg","FB2"],["Ter","Descanso"],["Qua","Descanso"]];
+const week = [["Qui","A · Empurrar"],["Sex","B · Pernas"],["Sáb","C · Puxar"],["Dom","FB1"],["Seg","FB2"],["Ter","Descanso"],["Qua","Descanso"]];
 const logica = `<section class="view" id="v-logica" hidden>
   <div class="dayhead"><span class="eyebrow">Como o plano funciona</span><h2>A lógica da divisão</h2></div>
   <div class="wk">${week.map((w,i)=>`<div class="${i>4?"off":""}"><b>${w[0]}</b><small>${w[1]}</small></div>`).join("")}</div>
@@ -374,7 +374,7 @@ const logica = `<section class="view" id="v-logica" hidden>
         <li><b>Cada músculo é treinado 2× por semana</b>, a frequência que melhor funciona para hipertrofia e para manter massa magra no emagrecimento.</li>
         <li><b>Nenhum músculo é treinado pesado dois dias seguidos.</b> O Fullbody 1 (dom) pula costas, treinadas no sábado. O Fullbody 2 (seg) pula peito, treinado no domingo.</li>
         <li><b>Pernas em dom e seg têm padrões diferentes:</b> domingo é quadril (stiff, flexora); segunda é joelho (hack, step-up). Isso permite recuperar um enquanto treina o outro.</li>
-        <li><b>Quinta abre com o treino mais pesado</b> (pernas), logo depois de dois dias de descanso total.</li>
+        <li><b>Quinta abre com empurrar e as pernas pesadas ficam na sexta</b>, 4 dias depois das pernas de segunda, com recuperação completa.</li>
       </ul></div>
     <div class="blk"><h4>Como treinar juntos</h4>
       <ul>
