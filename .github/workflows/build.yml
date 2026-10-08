@@ -22,17 +22,25 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Baixar Firebase JS
+        run: |
+          mkdir -p app/src/main/assets/vendor
+          for f in app auth firestore; do
+            curl -fsSL "https://www.gstatic.com/firebasejs/10.14.1/firebase-$f-compat.js" -o "app/src/main/assets/vendor/firebase-$f-compat.js"
+          done
+          ls -la app/src/main/assets/vendor
+
       - name: Compilar
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
+          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log || {
             msg=$(grep -A 25 -E "What went wrong|error:|ERROR:" build.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
             echo "::error title=Erro na compilacao::$msg"
             exit 1
           }
 
       - name: Renomear
-        run: cp app/build/outputs/apk/debug/app-debug.apk TreinoADois.apk
+        run: cp app/build/outputs/apk/release/app-release.apk TreinoADois.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -42,6 +50,6 @@ jobs:
       - name: Publicar para download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.${{ github.run_number }}
+          tag_name: v2.${{ github.run_number }}
           name: Treino a Dois ${{ github.run_number }}
           files: TreinoADois.apk

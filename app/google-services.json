@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "697042315294",
+    "project_id": "treino-a-dois-7d8cd",
+    "storage_bucket": "treino-a-dois-7d8cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697042315294:android:d5464188261020437fa60f",
+        "android_client_info": {
+          "package_name": "com.treinoadois.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697042315294-aok3v80lcuijkfecs2tb1v8c91vdlba1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIpNFusIkp8TWeTUwBXHbTRDA2B6MRnVc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697042315294-aok3v80lcuijkfecs2tb1v8c91vdlba1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

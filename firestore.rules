@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Perfil de cada pessoa: só o próprio dono lê e grava
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Casal: só quem é membro lê. Cria quem começa sozinho nele.
+    // Para entrar, a pessoa só pode se acrescentar, e só se ainda houver vaga.
+    match /couples/{code} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.members;
+      allow create: if request.auth != null && request.resource.data.members == [request.auth.uid];
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && resource.data.members.size() < 2
+        && !(request.auth.uid in resource.data.members)
+        && request.resource.data.members == resource.data.members.concat([request.auth.uid]);
+
+      // Treinos registrados: só os membros do casal
+      match /sessions/{sid} {
+        allow read, write: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/couples/$(code)).data.members;
+      }
+    }
+  }
+}

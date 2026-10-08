@@ -155,6 +155,23 @@ body.m-ela .dot.ele, body.m-ele .dot.ela{display:none}
 .tm.ela .bar i{background:var(--ela)} .tm.ele .bar i{background:var(--ele)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:7;background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
+
+/* Portão de entrada (login, papel, casal) */
+#gate{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;padding:24px 16px;overflow:auto}
+#gate[hidden]{display:none}
+.gcard{max-width:420px;width:100%;display:grid;gap:14px}
+.gcard h1{font-size:40px;font-weight:800;text-transform:uppercase}
+.gsub{margin:0;color:var(--muted);font-size:16px}
+.gbtn{height:54px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);font-weight:600;font-size:17px;cursor:pointer}
+.gbtn.alt{background:var(--surface);color:var(--fg);border:1px solid var(--line)}
+.role-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gbtn.ela{background:var(--ela-soft);color:var(--ela);font-family:var(--f-display);font-size:26px;text-transform:uppercase;height:84px}
+.gbtn.ele{background:var(--ele-soft);color:var(--ele);font-family:var(--f-display);font-size:26px;text-transform:uppercase;height:84px}
+.gor{text-align:center;color:var(--muted);font-size:13px}
+.gfld{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.gfld input{height:52px;border-radius:12px;border:1px solid var(--line);background:var(--field);color:var(--fg);font:700 22px/1 var(--f-display);letter-spacing:.2em;text-transform:uppercase;text-align:center;padding:0 12px}
+.gerr{margin:0;color:var(--warn);font-size:14px;font-weight:600}
+.code{letter-spacing:.12em}
 </style>
 <style>:root{color-scheme:light dark}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
 <div class="top" id="top">
@@ -171,9 +188,13 @@ body.m-ela .dot.ele, body.m-ele .dot.ela{display:none}
   </div>
 </div>
 
+<div id="gate" hidden></div>
 <main class="wrap" id="main"></main>
 <div class="timers" id="timers" hidden aria-live="polite"></div>
 <div class="toast" id="toast" hidden role="status"></div>
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
 
 <script>
 const DAYS = [
@@ -439,12 +460,19 @@ const nf = new Intl.NumberFormat("pt-BR",{maximumFractionDigits:1});
 const num = v=>{ if(v==null) return null; const x = parseFloat(String(v).trim().replace(",",".")); return isNaN(x) ? null : x; };
 const dayById = id=>DAYS.find(d=>d.id===id);
 
-/* ---------- Armazenamento: nuvem (db) com cópia local ---------- */
-const LS = "treinos-v1";
+/* ---------- Armazenamento: Firebase (nuvem) com cópia local ---------- */
+const FB_CONFIG = {
+  apiKey: "AIzaSyBLaelit27tZ0WeG3WKjB8a8FR8qJfJ-e0",
+  authDomain: "treino-a-dois-7d8cd.firebaseapp.com",
+  projectId: "treino-a-dois-7d8cd",
+  storageBucket: "treino-a-dois-7d8cd.firebasestorage.app",
+  messagingSenderId: "697042315294",
+  appId: "1:697042315294:web:6ef796380cc4d5197fa60f"
+};
+let LS = "treinos-v2";
 let docs = {};
-try{ docs = JSON.parse(store.get(LS)||"{}") || {}; }catch(e){ docs = {}; }
-let db = null, syncMode = "loading";
-const writing = {}, dirty = {};
+let syncMode = "loading";
+let auth = null, fdb = null, me = null, profile = null, coupleCode = null, unsub = null;
 const persistLocal = ()=>store.set(LS, JSON.stringify(docs));
 const sid = (day,p)=>`${TODAY}_${day}_${p}`;
 const getSet = (day,p,i,s)=>{ const d = docs[sid(day,p)]; return d && d.sets && d.sets[i] ? d.sets[i][s] : undefined; };
@@ -455,6 +483,7 @@ function saveSet(day,p,i,s,val){
   cur.sets[i] = cur.sets[i] || {};
   cur.sets[i][s] = val;
   cur.updatedAt = Date.now();
+  if(me) cur.by = me.uid;
   docs[id] = cur; persistLocal(); queueWrite(id); refresh();
 }
 function clearDay(day){
@@ -463,59 +492,159 @@ function clearDay(day){
   persistLocal(); refresh();
 }
 function queueWrite(id){
-  if(!db) return;
-  if(writing[id]){ dirty[id] = true; return; }
-  doWrite(id, 0);
-}
-async function doWrite(id, attempt){
-  writing[id] = true;
-  try{ await db.collection("treinos").doc(id).set(docs[id]); }
-  catch(e){
-    const c = e && e.code;
-    if(c==="invalid_argument"){ setMode("noperm"); }
-    else if(c==="unavailable" && attempt<1){ writing[id]=false; setTimeout(()=>doWrite(id,1), 800+Math.random()*800); return; }
-    else if(c==="quota_exceeded"){ toast("A nuvem do app está cheia. Os registros ficaram salvos neste aparelho."); }
-    else { toast("Sem conexão com a nuvem agora. Ficou salvo neste aparelho."); }
-  }
-  writing[id] = false;
-  if(dirty[id]){ dirty[id] = false; doWrite(id, 0); }
+  if(!fdb || !coupleCode || !docs[id]) return;
+  fdb.collection("couples").doc(coupleCode).collection("sessions").doc(id).set(docs[id]).catch(e=>{
+    toast(e && e.code==="permission-denied" ? "Sem permissão para salvar na nuvem. Saia e entre de novo na conta." : "Não deu para salvar na nuvem agora. Ficou salvo neste celular.");
+  });
 }
 function setMode(m){
   syncMode = m;
-  if(m!=="cloud") db = null;
   const txt = {
     loading:"Conectando à nuvem…",
-    cloud:"Salvo na nuvem: vocês dois veem os mesmos registros",
-    local:"Salvo neste celular. Cada um registra no próprio aparelho.",
-    noperm:"Salvo só neste aparelho. Para registrar na nuvem, o dono do app precisa te adicionar como Colaborador no menu Compartilhar."
+    cloud:"Salvo na nuvem e sincronizado entre vocês",
+    offline:"Sem internet: salvo no celular, envia sozinho quando a conexão voltar",
+    local:"Salvo só neste celular"
   }[m];
   document.querySelectorAll(".syncline").forEach(el=>{ el.className = "small sync syncline"+(m==="cloud"?" cloud":""); el.innerHTML = `<i></i>${txt}`; });
 }
-async function initDb(){
-  const c = window.claude;
-  if(!c || !c.use){ setMode("local"); return; }
-  let d = null;
-  try{ d = await c.use("db"); }catch(e){ d = null; }
-  if(!d){ setMode("local"); return; }
-  try{
-    const u = await c.use("user");
-    if(u && u.can){ const w = await u.can("data.write"); if(w===false){ setMode("noperm"); return; } }
-  }catch(e){}
-  db = d; setMode("cloud");
-  let first = true;
-  db.collection("treinos").orderBy("date","desc").limit(600).onSnapshot(snap=>{
-    if(syncMode!=="cloud") return;
-    const fresh = {};
-    snap.docs.forEach(x=>{ fresh[x.id] = x.data(); });
-    if(first){
-      Object.keys(docs).forEach(id=>{
-        const loc = docs[id], rem = fresh[id];
-        if(!rem || (loc.updatedAt||0) > (rem.updatedAt||0)){ fresh[id] = loc; setTimeout(()=>queueWrite(id), 0); }
-      });
-      first = false;
+
+/* ---------- Conta, casal e portão de entrada ---------- */
+const gateEl = document.getElementById("gate");
+const esc = s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function gate(state, msg){
+  if(state==="app"){ gateEl.hidden = true; return; }
+  gateEl.hidden = false;
+  const err = msg ? `<p class="gerr">${esc(msg)}</p>` : "";
+  let body = "";
+  if(state==="boot") body = `<p class="gsub">Abrindo…</p>`;
+  if(state==="login") body = `
+    <p class="gsub">Entre com a sua conta Google para salvar os treinos na nuvem. Assim nada se perde se você trocar de celular.</p>
+    <button class="gbtn" id="g-login">Entrar com Google</button>${err}`;
+  if(state==="busy") body = `<p class="gsub">${esc(msg||"Só um instante…")}</p>`;
+  if(state==="role") body = `
+    <p class="gsub">Olá${me&&me.displayName?", "+esc(me.displayName.split(" ")[0]):""}! Qual treino é o seu?</p>
+    <div class="role-row"><button class="gbtn ela" data-role="ela">Ela</button><button class="gbtn ele" data-role="ele">Ele</button></div>
+    <p class="small">Você ainda pode ver e registrar o treino do outro pelo seletor no topo.</p>${err}`;
+  if(state==="couple") body = `
+    <p class="gsub">Vocês treinam juntos. Um de vocês cria o casal, e o outro entra com o código.</p>
+    <button class="gbtn" id="g-create">Criar nosso casal</button>
+    <div class="gor">ou</div>
+    <label class="gfld"><span>Código que o seu par te enviou</span><input id="g-code" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="Ex.: K7QF2M"></label>
+    <button class="gbtn alt" id="g-join">Entrar no casal</button>${err}`;
+  gateEl.innerHTML = `<div class="gcard"><h1>Treino a Dois</h1>${body}</div>`;
+}
+gateEl.addEventListener("click", async e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.id==="g-login"){
+    gate("busy","Abrindo o login do Google…");
+    if(window.AndroidApp && AndroidApp.signIn) AndroidApp.signIn();
+    else auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err=>gate("login", "Não foi possível entrar ("+(err.code||err.message)+")"));
+  }
+  if(b.dataset.role){
+    gate("busy");
+    try{ await saveProfile({role:b.dataset.role}); store.set("mode", b.dataset.role); next(); }
+    catch(err){ gate("role", "Não foi possível salvar. Confira a internet e tente de novo."); }
+  }
+  if(b.id==="g-create"){
+    gate("busy","Criando o casal…");
+    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const code = Array.from({length:6},()=>A[Math.floor(Math.random()*A.length)]).join("");
+    try{
+      await fdb.collection("couples").doc(code).set({members:[me.uid], createdBy:me.uid, createdAt:Date.now()});
+      await saveProfile({couple:code}); next();
+    }catch(err){ gate("couple", "Não foi possível criar o casal ("+(err.code||"erro")+"). Confira a internet e tente de novo."); }
+  }
+  if(b.id==="g-join"){
+    const code = (document.getElementById("g-code").value||"").trim().toUpperCase();
+    if(code.length!==6){ gate("couple","O código tem 6 letras ou números."); return; }
+    gate("busy","Entrando no casal…");
+    const ref = fdb.collection("couples").doc(code);
+    try{
+      let member = false;
+      try{ const s = await ref.get(); member = s.exists && (s.data().members||[]).includes(me.uid); }catch(_){}
+      if(!member) await ref.update({members: firebase.firestore.FieldValue.arrayUnion(me.uid)});
+      await saveProfile({couple:code}); next();
+    }catch(err){
+      const m = err && err.code==="not-found" ? "Código não encontrado. Confira as letras e números."
+        : err && err.code==="permission-denied" ? "Esse casal já tem duas pessoas, ou o código está errado."
+        : "Não foi possível entrar ("+((err&&err.code)||"erro")+"). Confira a internet.";
+      gate("couple", m);
     }
-    docs = fresh; persistLocal(); refresh();
-  }, ()=>{ setMode("local"); toast("A nuvem saiu do ar. Continuando a salvar neste aparelho."); });
+  }
+});
+window.onNativeSignIn = async token=>{
+  try{ await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(token)); }
+  catch(e){ gate("login", "Não foi possível entrar ("+(e.code||e.message)+")"); }
+};
+window.onNativeSignInError = msg=>{ gate("login", msg==="cancelado" ? "" : "Não foi possível entrar com o Google. "+msg); };
+
+async function saveProfile(patch){
+  profile = {...(profile||{}), ...patch, name: me.displayName||"", email: me.email||"", updatedAt: Date.now()};
+  store.set("profile-"+me.uid, JSON.stringify(profile));
+  await fdb.collection("users").doc(me.uid).set(profile, {merge:true});
+}
+function next(){
+  if(!profile || !profile.role){ gate("role"); return; }
+  if(!profile.couple){ gate("couple"); return; }
+  startApp();
+}
+function startApp(){
+  coupleCode = profile.couple;
+  LS = "treinos-v2-"+coupleCode;
+  try{ docs = JSON.parse(store.get(LS)||"{}") || {}; }catch(e){ docs = {}; }
+  mode(store.get("mode") || profile.role);
+  gate("app");
+  if(unsub) unsub();
+  let first = true;
+  unsub = fdb.collection("couples").doc(coupleCode).collection("sessions").orderBy("date","desc").limit(600)
+    .onSnapshot({includeMetadataChanges:true}, snap=>{
+      const fresh = {};
+      snap.docs.forEach(x=>{ fresh[x.id] = x.data(); });
+      if(first && !snap.metadata.fromCache){
+        Object.keys(docs).forEach(id=>{
+          const loc = docs[id], rem = fresh[id];
+          if(!rem || (loc.updatedAt||0) > (rem.updatedAt||0)){ fresh[id] = loc; setTimeout(()=>queueWrite(id), 0); }
+        });
+        first = false;
+      }
+      if(!first || Object.keys(fresh).length){ docs = fresh; persistLocal(); }
+      setMode(snap.metadata.fromCache ? "offline" : "cloud");
+      refresh();
+    }, err=>{ setMode("local"); toast("A nuvem não respondeu ("+(err.code||"erro")+"). Continuando a salvar no celular."); });
+}
+async function signOutAll(){
+  try{ if(unsub) unsub(); }catch(e){}
+  try{ window.AndroidApp && AndroidApp.signOut && AndroidApp.signOut(); }catch(e){}
+  try{ await auth.signOut(); }catch(e){}
+  store.set("mode","");
+  location.reload();
+}
+function accountBlock(){
+  if(!me || !profile) return "";
+  return `<div class="blk"><h4>Conta</h4><div class="rows">
+    <div class="row"><div class="l"><b>${esc(me.displayName||me.email)}</b><small>${esc(me.email)} · treino: ${profile.role==="ela"?"Ela":"Ele"}</small></div></div>
+    <div class="row"><div class="l"><b>Código do casal</b><small>Envie para o seu par entrar no mesmo casal</small></div><div class="r"><b class="code">${esc(profile.couple||"–")}</b></div></div>
+  </div><button class="reset" id="signout" style="margin-top:8px">Sair da conta</button></div>`;
+}
+document.addEventListener("click", e=>{ if(e.target.closest("#signout")) signOutAll(); });
+
+function initFirebase(){
+  if(!window.firebase){ setMode("local"); gate("app"); return; }
+  firebase.initializeApp(FB_CONFIG);
+  auth = firebase.auth();
+  fdb = firebase.firestore();
+  fdb.enablePersistence().catch(()=>{});
+  gate("boot");
+  auth.onAuthStateChanged(async u=>{
+    me = u;
+    if(!u){ if(unsub){ unsub(); unsub = null; } gate("login"); return; }
+    try{ profile = JSON.parse(store.get("profile-"+u.uid)||"null"); }catch(e){ profile = null; }
+    try{
+      const snap = await fdb.collection("users").doc(u.uid).get();
+      if(snap.exists) profile = snap.data();
+    }catch(e){}
+    next();
+  });
 }
 
 /* ---------- Histórico derivado ---------- */
@@ -671,7 +800,7 @@ function renderHist(){
     return `<div class="blk ${p}"><h4>Evolução de carga · ${p==="ela"?"Ela":"Ele"}</h4>${rows.length?`<div class="rows">${rows.join("")}</div>`:`<p class="empty">As cargas aparecem aqui depois do primeiro treino registrado.</p>`}</div>`;
   }).join("");
 
-  el.innerHTML = `
+  el.innerHTML = accountBlock() + `
     <div class="blk"><h4>Esta semana</h4><div class="wk five">${week}</div></div>
     <div class="blk"><h4>Treinos registrados</h4><div class="rows">${sessRows}</div></div>
     ${evo}
@@ -680,7 +809,7 @@ function renderHist(){
       <li>Preencha carga e repetições e toque no ✓. O cronômetro de descanso começa sozinho, com aviso sonoro no fim.</li>
       <li>Campo vazio + ✓ repete os números da última vez (mostrados em cinza).</li>
       <li>Quando aparecer <b>“suba a carga”</b>, aumente 2–5% e volte ao início da faixa de repetições.</li>
-      <li>Os registros ficam guardados neste celular. Desinstalar o app ou limpar os dados dele apaga o histórico.</li>
+      <li>Os registros ficam na nuvem: pode desinstalar o app ou trocar de celular que nada se perde. Basta entrar com a mesma conta Google.</li>
     </ul></div>`;
   setMode(syncMode);
 }
@@ -804,6 +933,6 @@ mode(store.get("mode") || "ambos");
 setMode("loading");
 const hash = (location.hash||"").slice(1);
 show(VIEWS.some(v=>v.id===hash) ? hash : (todayDay ? todayDay.id : "qui"));
-initDb();
+initFirebase();
 </script>
 </body></html>
