@@ -60,7 +60,7 @@ jobs:
           }
 
       - name: Renomear
-        run: cp app/build/outputs/apk/release/app-release.apk TreinoADois.apk
+        run: cp app/build/outputs/apk/release/app-release.apk TreinoADois.apk && cp TreinoADois.apk Spotter.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -71,5 +71,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v4.${{ github.run_number }}
-          name: Treino a Dois ${{ github.run_number }}
-          files: TreinoADois.apk
+          name: Spotter ${{ github.run_number }}
+          files: |
+            TreinoADois.apk
+            Spotter.apk

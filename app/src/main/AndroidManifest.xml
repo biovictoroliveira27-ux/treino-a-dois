@@ -10,7 +10,7 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Treino a Dois"
+        android:label="Spotter"
         android:theme="@style/AppTheme">
 
         <activity
