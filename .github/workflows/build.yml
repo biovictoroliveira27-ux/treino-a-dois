@@ -30,6 +30,26 @@ jobs:
           done
           ls -la app/src/main/assets/vendor
 
+      - name: Baixar fontes (funcionam sem internet)
+        run: |
+          UA="Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+          curl -fsSL -A "$UA" "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" -o /tmp/fonts.css
+          python3 - <<'PY'
+          import re, urllib.request, os
+          css = open('/tmp/fonts.css').read()
+          out_dir = 'app/src/main/assets/vendor/fonts'; os.makedirs(out_dir, exist_ok=True)
+          blocks = re.findall(r'/\* ([a-z-]+) \*/\s*(@font-face\s*\{[^}]*\})', css)
+          keep = []
+          for k,(subset, block) in enumerate(blocks):
+              if subset not in ('latin', 'latin-ext'): continue
+              url = re.search(r'url\((https://[^)]+)\)', block).group(1)
+              name = f'f{k}.woff2'
+              urllib.request.urlretrieve(url, f'{out_dir}/{name}')
+              keep.append(block.replace(url, 'fonts/' + name))
+          open('app/src/main/assets/vendor/fonts.css', 'w').write('\n'.join(keep))
+          print(len(keep), 'fontes')
+          PY
+
       - name: Compilar
         run: |
           set -o pipefail

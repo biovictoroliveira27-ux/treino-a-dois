@@ -5,6 +5,10 @@ import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.os.Build;
+import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -47,6 +51,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        applySystemBars();
         credentials = CredentialManager.create(this);
         final Handler main = new Handler(Looper.getMainLooper());
         mainExecutor = main::post;
@@ -56,6 +61,7 @@ public class MainActivity extends Activity {
                 .build();
 
         web = new WebView(this);
+        web.setBackgroundColor(isNight() ? Color.parseColor("#121615") : Color.parseColor("#F3F4F2"));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -127,7 +133,7 @@ public class MainActivity extends Activity {
         public void signOut() { runOnUiThread(MainActivity.this::signOut); }
 
         @JavascriptInterface
-        public String version() { return "2.1"; }
+        public String version() { return "3.0"; }
     }
 
     @Override
@@ -136,9 +142,41 @@ public class MainActivity extends Activity {
         web.saveState(out);
     }
 
+    private boolean isNight() {
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    // Barra de status e de navegação nas cores do app (claro/escuro)
+    private void applySystemBars() {
+        boolean night = isNight();
+        int bar = night ? Color.parseColor("#121615") : Color.parseColor("#F3F4F2");
+        int nav = night ? Color.parseColor("#1B201F") : Color.WHITE;
+        getWindow().setStatusBarColor(bar);
+        getWindow().setNavigationBarColor(nav);
+        View decor = getWindow().getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        if (night) {
+            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (Build.VERSION.SDK_INT >= 26) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        } else {
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (Build.VERSION.SDK_INT >= 26) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        decor.setSystemUiVisibility(flags);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration c) {
+        super.onConfigurationChanged(c);
+        applySystemBars();
+    }
+
+    // Voltar: o app decide (fecha o resumo, volta para Hoje); só sai se estiver no início
     @Override
     public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
-        else super.onBackPressed();
+        web.evaluateJavascript("window.onBack ? String(window.onBack()) : 'false'", value -> {
+            if (!"\"true\"".equals(value)) MainActivity.super.onBackPressed();
+        });
     }
 }
