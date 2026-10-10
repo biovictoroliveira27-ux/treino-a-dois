@@ -283,6 +283,40 @@ body.m-ela .pws, body.m-ele .pws{grid-template-columns:1fr}
 .pesorow small{font-size:12px;color:var(--muted)}
 .fld.peso{height:44px}
 .timers{padding-bottom:10px}
+
+/* ===== v4 ===== */
+.pbtn{border:0;cursor:pointer;background:var(--ink);color:var(--bg)}
+.wlinks{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.vid,.anb{display:inline-flex;align-items:center;gap:6px;height:30px;padding-inline:12px;border-radius:999px;font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;border:1px solid var(--line);background:var(--field);color:var(--fg)}
+.vid::before{content:"";width:0;height:0;border-left:8px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.anot{font-size:13px;font-weight:600;background:var(--field);border-radius:8px;padding:6px 10px}
+.ta{width:100%;border:1px solid var(--line);border-radius:12px;background:var(--field);color:var(--fg);font:15px/1.45 var(--f-body);padding:10px 12px;resize:vertical}
+.ta.mono{font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.tin{width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--fg);font:15px var(--f-body);padding:0 12px}
+select.tin{appearance:auto}
+.gfld2{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.edlist{display:grid;gap:8px}
+.edrow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.edrow .l{display:grid;min-width:0}
+.edrow .l b{font-weight:600}
+.edrow .l small{color:var(--muted);font-size:12px}
+.edbtns{display:flex;gap:6px;flex-wrap:wrap}
+.ib{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--fg);font-size:18px;cursor:pointer}
+.ib:disabled{opacity:.35}
+.cta.del{background:transparent;color:var(--warn);border:1px solid var(--line)}
+.cta.del.armed{background:var(--warn);color:var(--bg);border-color:var(--warn)}
+.ef{border:0;border-radius:14px;padding:12px;margin:0;display:grid;gap:8px}
+.ef.ela{background:var(--ela-soft)} .ef.ele{background:var(--ele-soft)}
+.ef legend{padding:0;float:left;width:100%}
+.chk2{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.ef.ela .chk2{color:var(--ela)} .ef.ele .chk2{color:var(--ele)}
+.chk2 input{width:20px;height:20px}
+.pv{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.pv b{display:block}
+.pv > small{color:var(--muted);font-size:12px}
+.pv ol{margin:6px 0 0;padding-left:20px;display:grid;gap:3px;font-size:14px}
+.gerr[hidden]{display:none}
 </style>
 <style>:root{color-scheme:light dark}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
 <div class="top" id="top">
@@ -310,7 +344,7 @@ body.m-ela .pws, body.m-ele .pws{grid-template-columns:1fr}
 <script src="vendor/firebase-firestore-compat.js"></script>
 
 <script>
-const DAYS = [
+let DAYS = [
  {id:"qui", dow:4, chip:"Qui · A", sub:"Empurrar", eyebrow:"Dia 1 · Quinta", title:"A · Empurrar", focus:"Peito, ombro e tríceps", time:"≈ 45 min + cardio",
   note:"<b>Equilíbrio postural:</b> para cada empurrar, ela faz um puxar ou abrir de peito (face pull e anjo na parede) para não reforçar ombros caídos para a frente.",
   ex:[
@@ -353,9 +387,9 @@ const DAYS = [
   {n:"Cadeira extensora",
    ela:{s:"3 × 15",d:"desc. 45s",t:"Costas apoiadas, mãos nas alças. Suba controlando, sem trancos."},
    ele:{s:"3 × 10–12 + drop-set na última",d:"desc. 60–90s",t:"Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."}},
-  {n:"Pull-through na polia (glúteo)", since:"2026-10-10",
-   ela:{s:"3 × 12–15",d:"desc. 60s",t:"De costas para a polia baixa, com a corda passando entre as pernas. Empurre o quadril para trás com a coluna reta e volte apertando o glúteo. No fim, fique em pé alta, sem jogar o tronco para trás."},
-   ele:{s:"3 × 10–12",d:"desc. 90s",t:"Desça até alongar bem o posterior de coxa e suba com força de quadril, não de braço. Segure 2s em pé apertando o glúteo."}},
+  {n:"Glúteo na polia (coice)", k:"gluteo-polia",
+   ela:{s:"3 × 12–15/perna",d:"desc. 45–60s",t:"Polia baixa com caneleira no tornozelo. Mãos apoiadas no aparelho, tronco levemente inclinado e abdômen firme. Leve a perna para trás apertando o glúteo e pare antes de a lombar arquear ou o quadril girar."},
+   ele:{s:"3 × 10–12/perna",d:"desc. 60s",t:"Segure 1s lá atrás apertando o glúteo e volte em 2–3s. Tronco parado: quem se move é só o quadril. Carga que permita controle total."}},
   {n:"Panturrilha em pé",
    ela:{s:"3 × 15–20",d:"desc. 30–45s",t:"Movimento completo e sem pressa."},
    ele:{s:"3 × 10–15",d:"desc. 60s",t:"Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."}},
@@ -543,24 +577,38 @@ const logica = `<section class="view" id="v-logica" hidden>
 /* ---------- Preparação dos dados ---------- */
 const P = ["ela","ele"];
 const NK = {"Prancha frontal":"s","Prancha lateral":"s","Anjo na parede":"reps","Curl-up de McGill":"reps","Bird-dog":"reps","Dead bug":"reps"};
-DAYS.forEach(d=>d.ex.forEach(e=>P.forEach(p=>{
-  const o = e[p]; if(!o) return;
-  const m = o.s.match(/^(\d+)\s*×\s*(\d+)(?:[–-](\d+))?/);
-  o.n = m ? +m[1] : 3; o.lo = m ? +m[2] : 0; o.hi = m ? +(m[3]||m[2]) : 0;
-  if(e.n in NK || /Flexão de braço/.test(o.v||"")){ o.nk = true; o.u = NK[e.n] || "reps"; }
-  o.unit = /\d\s*m\b/.test(o.s) ? "m" : (o.u==="s" ? "s" : "reps");
-  const r = o.d.match(/(\d+)(?:[–-]\d+)?\s*(s|min)/);
-  o.rest = /descanso dele/.test(o.d) ? 0 : (r ? (+r[1])*(r[2]==="min"?60:1) : 60);
-})));
+function prepDays(days){
+  days.forEach(d=>d.ex.forEach((e,i)=>{
+    if(e.k==null) e.k = String(i);
+    P.forEach(p=>{
+      const o = e[p]; if(!o) return;
+      const m = o.s.match(/^(\d+)\s*×\s*(\d+)(?:[–-](\d+))?/);
+      o.n = m ? +m[1] : 3; o.lo = m ? +m[2] : 0; o.hi = m ? +(m[3]||m[2]) : 0;
+      if(o.nk===undefined && (e.n in NK || /Flexão de braço/.test(o.v||""))){ o.nk = true; o.u = NK[e.n] || "reps"; }
+      o.unit = o.u==="m" || /\d\s*m\b/.test(o.s) ? "m" : (o.u==="s" ? "s" : "reps");
+      const r = o.d.match(/(\d+)(?:[–-]\d+)?\s*(s|min)/);
+      o.rest = o.rs!=null ? +o.rs : (/descanso del[ea]/.test(o.d) ? 0 : (r ? (+r[1])*(r[2]==="min"?60:1) : 60));
+    });
+  }));
+  return days;
+}
+const DEFAULT_DAYS = JSON.parse(JSON.stringify(DAYS));
+prepDays(DAYS);
 
-const VIEWS = [
-  {id:"home", chip:"Hoje", sub:""},
-  {id:"aquecer", chip:"Aquecer", sub:"8–10 min"},
-  ...DAYS.map(d=>({id:d.id, chip:d.chip, sub:d.sub})),
-  {id:"cardio", chip:"Cardio", sub:"pós-treino"},
-  {id:"hist", chip:"Histórico", sub:"cargas"},
-  {id:"logica", chip:"Lógica", sub:"divisão e regras"}
-];
+let VIEWS = [];
+function buildViewList(){
+  VIEWS = [
+    {id:"home", chip:"Hoje", sub:""},
+    {id:"plano", chip:"Meu plano", sub:"editar e importar"},
+    {id:"aquecer", chip:"Aquecer", sub:"8–10 min"},
+    ...DAYS.map(d=>({id:d.id, chip:d.chip, sub:d.sub})),
+    {id:"cardio", chip:"Cardio", sub:"pós-treino"},
+    {id:"hist", chip:"Histórico", sub:"cargas"},
+    {id:"logica", chip:"Lógica", sub:"divisão e regras"}
+  ];
+}
+buildViewList();
+const kOf = (day,i)=>{ const d = dayById(day); return d && d.ex[i] ? d.ex[i].k : String(i); };
 
 const store = {
   get(k){try{return localStorage.getItem(k)}catch(e){return null}},
@@ -589,13 +637,14 @@ let syncMode = "loading";
 let auth = null, fdb = null, me = null, profile = null, coupleCode = null, unsub = null;
 const persistLocal = ()=>store.set(LS, JSON.stringify(docs));
 const sid = (day,p)=>`${TODAY}_${day}_${p}`;
-const getSet = (day,p,i,s)=>{ const d = docs[sid(day,p)]; return d && d.sets && d.sets[i] ? d.sets[i][s] : undefined; };
+const getSet = (day,p,i,s)=>{ const d = docs[sid(day,p)], k = kOf(day,i); return d && d.sets && d.sets[k] ? d.sets[k][s] : undefined; };
 
 function saveSet(day,p,i,s,val){
   const id = sid(day,p);
   const cur = docs[id] ? JSON.parse(JSON.stringify(docs[id])) : {date:TODAY, day, person:p, sets:{}};
-  cur.sets[i] = cur.sets[i] || {};
-  cur.sets[i][s] = val;
+  const k = kOf(day,i);
+  cur.sets[k] = cur.sets[k] || {};
+  cur.sets[k][s] = val;
   if(val && val.ok && !cur.startedAt) cur.startedAt = Date.now();
   cur.updatedAt = Date.now();
   if(me) cur.by = me.uid;
@@ -707,6 +756,7 @@ function startApp(){
   coupleCode = profile.couple;
   LS = "treinos-v2-"+coupleCode;
   try{ docs = JSON.parse(store.get(LS)||"{}") || {}; }catch(e){ docs = {}; }
+  applyPlanFrom(docs);
   mode(store.get("mode") || profile.role);
   gate("app");
   if(unsub) unsub();
@@ -722,7 +772,7 @@ function startApp(){
         });
         first = false;
       }
-      if(!first || Object.keys(fresh).length){ docs = fresh; persistLocal(); }
+      if(!first || Object.keys(fresh).length){ docs = fresh; persistLocal(); applyPlanFrom(docs); }
       setMode(snap.metadata.fromCache ? "offline" : "cloud");
       refresh();
     }, err=>{ setMode("local"); toast("A nuvem não respondeu ("+(err.code||"erro")+"). Continuando a salvar no celular."); });
@@ -766,10 +816,11 @@ function initFirebase(){
 function load(v,u){ if(v==null) return "–"; return u==="br" ? `${nf.format(v)} ${v===1?"barra":"barras"}` : `${nf.format(v)} kg`; }
 function unitFor(day,i,p,prev){
   const t = docs[sid(day,p)];
-  if(t && t.units && t.units[i]) return t.units[i];
+  const k = kOf(day,i);
+  if(t && t.units && t.units[k]) return t.units[k];
   if(prev===undefined){ const e = dayById(day).ex[i]; prev = prevSession(day,p); if(e.since && prev && prev.date < e.since) prev = null; }
   if(prev){
-    if(prev.units && prev.units[i]) return prev.units[i];
+    if(prev.units && prev.units[k]) return prev.units[k];
     const ss = okSets(prev,i); if(ss.length && ss[ss.length-1].u) return ss[ss.length-1].u;
   }
   return "kg";
@@ -778,8 +829,9 @@ function saveUnit(day,i,p,u){
   if(unitFor(day,i,p)===u) return;
   const id = sid(day,p);
   const cur = docs[id] ? JSON.parse(JSON.stringify(docs[id])) : {date:TODAY, day, person:p, sets:{}};
-  cur.units = {...(cur.units||{}), [i]:u};
-  if(cur.sets && cur.sets[i]) Object.values(cur.sets[i]).forEach(v=>{ if(v) v.u = u; });
+  const k = kOf(day,i);
+  cur.units = {...(cur.units||{}), [k]:u};
+  if(cur.sets && cur.sets[k]) Object.values(cur.sets[k]).forEach(v=>{ if(v) v.u = u; });
   cur.updatedAt = Date.now();
   docs[id] = cur; persistLocal(); queueWrite(id); refresh();
 }
@@ -793,11 +845,12 @@ function prevSession(day,p){
   }
   return best;
 }
-function okSets(x,i){
-  const s = x && x.sets && x.sets[i]; if(!s) return [];
-  return Object.keys(s).sort((a,b)=>a-b).map(k=>s[k]).filter(v=>v && v.ok);
+function okSetsK(x,k){
+  const s = x && x.sets && x.sets[k]; if(!s) return [];
+  return Object.keys(s).sort((a,b)=>a-b).map(j=>s[j]).filter(v=>v && v.ok);
 }
-function hasOk(x){ return x && x.sets && Object.keys(x.sets).some(i=>okSets(x,i).length); }
+const okSets = (x,i)=> x ? okSetsK(x, kOf(x.day,i)) : [];
+function hasOk(x){ return !!(x && x.sets && Object.keys(x.sets).some(k=>okSetsK(x,k).length)); }
 
 /* ---------- Render ---------- */
 const checkSvg = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -815,6 +868,8 @@ function whoBlock(d,i,e,p){
     <div class="wrow"><span class="tag">${p==="ela"?"Ela":"Ele"}</span><span class="sr">${o.s}</span><span class="rest">${o.d}</span></div>
     ${o.v?`<div class="var">${o.v}</div>`:""}
     <p class="tip">${o.t}</p>
+    <div class="wlinks"><a class="vid" href="${videoUrl(e,o)}">Ver execução</a><button class="anb" data-note="${d.id}|${e.k}|${p}">Anotação</button></div>
+    <div class="anot" id="an-${d.id}-${i}-${p}" hidden></div>
     <div class="last" id="last-${d.id}-${i}-${p}" hidden></div>
     ${o.nk?"":`<div class="ubar">Carga em <span class="useg" data-day="${d.id}" data-i="${i}" data-p="${p}"><button data-u="kg" aria-pressed="true">kg</button><button data-u="br" aria-pressed="false">barras</button></span></div>`}
     <div class="sets">${rows}</div></div>`;
@@ -833,7 +888,7 @@ function dayView(d){
   }).join("");
   return `<section class="view" id="v-${d.id}" hidden>
     <div class="dayhead"><span class="eyebrow">${d.eyebrow}</span><h2>${d.title}</h2><p>${d.focus}</p>
-      <div class="meta"><span class="pill">${d.time}</span><span class="pill" id="tot-${d.id}"></span></div></div>
+      <div class="meta"><span class="pill">${d.time}</span><span class="pill" id="tot-${d.id}"></span><button class="pill pbtn" data-edit="${d.id}">Editar treino</button></div></div>
     <div class="sess" id="sess-${d.id}"></div>
     <div class="note">${d.note}</div>
     <div class="note"><b>Como registrar:</b> preencha carga e repetições e toque no ✓. O descanso começa sozinho. Com o campo vazio, o ✓ repete os números da última vez.</div>
@@ -874,6 +929,8 @@ function syncDay(d){
       const u = o.nk ? "kg" : unitFor(d.id,i,p,pv);
       const ug = view.querySelector(`.useg[data-i="${i}"][data-p="${p}"]`);
       if(ug) ug.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.u===u));
+      const an = document.getElementById(`an-${d.id}-${i}-${p}`), nt = noteGet(d.id,e.k,p);
+      if(an){ an.textContent = nt ? "Anotação: "+nt : ""; an.hidden = !nt; }
       const lh = lastHtml(o, pv, i);
       last.innerHTML = lh; last.hidden = !lh;
       const pset = okSets(pv, i).filter(x=>(x.u||"kg")===u);
@@ -904,7 +961,7 @@ function syncDay(d){
 
 function volume(x){
   let v = 0, n = 0;
-  for(const i in (x.sets||{})) okSets(x,i).forEach(s=>{ n++; if(s.kg!=null && s.r && s.u!=="br") v += s.kg*s.r; });
+  for(const k in (x.sets||{})) okSetsK(x,k).forEach(s=>{ n++; if(s.kg!=null && s.r && s.u!=="br") v += s.kg*s.r; });
   return {v,n};
 }
 
@@ -955,7 +1012,7 @@ function renderHist(){
   }).join("");
 
   el.innerHTML = P.map(pesoBlock).join("") + `
-    <div class="blk"><h4>Esta semana</h4><div class="wk five">${week}</div></div>
+    <div class="blk"><h4>Esta semana</h4><div class="wk five" style="grid-template-columns:repeat(${DAYS.length},minmax(0,1fr))">${week}</div></div>
     <div class="blk"><h4>Treinos registrados</h4><div class="rows">${sessRows}</div></div>
     ${evo}
     <div class="blk"><h4>Como usar o app</h4><ul>
@@ -974,19 +1031,24 @@ const histView = `<section class="view" id="v-hist" hidden>
 </section>`;
 
 const homeView = `<section class="view" id="v-home" hidden><div id="home-body"></div></section>`;
-document.getElementById("main").innerHTML = homeView + aquecer + DAYS.map(dayView).join("") + cardio + histView + logica;
+function buildViews(){
+  todayDay = DAYS.find(d=>d.dow===dowNow) || null;
+  buildViewList();
+  TABS[1].views = DAYS.map(d=>d.id);
+  document.getElementById("main").innerHTML = homeView + planView + aquecer + DAYS.map(dayView).join("") + cardio + histView + logica;
+}
 
-function refresh(){ DAYS.forEach(syncDay); renderHist(); renderHome(); }
+function refresh(){ DAYS.forEach(syncDay); renderHist(); renderHome(); renderPlan(); }
 
 /* ---------- Navegação ---------- */
 const dowNow = new Date().getDay();
-const todayDay = DAYS.find(d=>d.dow===dowNow);
+let todayDay = DAYS.find(d=>d.dow===dowNow) || null;
 const chips = document.getElementById("chips");
 const TABS = [
   {id:"home", label:"Hoje", views:["home"]},
   {id:"treinos", label:"Treinos", views:DAYS.map(d=>d.id)},
   {id:"prog", label:"Progresso", views:["hist"]},
-  {id:"guia", label:"Guia", views:["aquecer","cardio","logica"]}
+  {id:"guia", label:"Guia", views:["plano","aquecer","cardio","logica"]}
 ];
 let currentView = "home";
 function show(id){
@@ -1070,7 +1132,7 @@ function beep(){
 async function keepAwake(){ try{ if("wakeLock" in navigator && !wl){ wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release",()=>{ wl = null; }); } }catch(e){} }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && (timers.ela||timers.ele)) keepAwake(); });
 const clock = ms=>{ const t = Math.max(0, Math.ceil(ms/1000)); return Math.floor(t/60)+":"+pad(t%60); };
-function startTimer(p, sec){ timers[p] = {end:Date.now()+sec*1000, total:sec*1000, done:false}; drawTimers(); }
+function startTimer(p, sec){ timers[p] = {end:Date.now()+sec*1000, total:sec*1000, done:false}; nativeRest(p, sec); drawTimers(); }
 function drawTimers(){
   const act = P.filter(p=>timers[p]);
   tEl.hidden = !act.length; document.body.classList.toggle("timing", !!act.length);
@@ -1095,8 +1157,8 @@ function tick(){
 tEl.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
   const p = b.dataset.p, t = timers[p]; if(!t) return;
-  if(b.dataset.t==="add"){ if(t.done){ t.done=false; t.end = Date.now()+15000; t.total = 15000; } else { t.end += 15000; t.total += 15000; } drawTimers(); }
-  else { timers[p] = null; drawTimers(); }
+  if(b.dataset.t==="add"){ if(t.done){ t.done=false; t.end = Date.now()+15000; t.total = 15000; } else { t.end += 15000; t.total += 15000; } nativeRest(p, Math.ceil((t.end-Date.now())/1000)); drawTimers(); }
+  else { timers[p] = null; nativeRest(p, 0); drawTimers(); }
 });
 
 let toastT = null;
@@ -1172,9 +1234,9 @@ const allPRs = ()=> Object.values(docs).filter(x=>x.day && hasOk(x)).flatMap(prs
 
 /* ---------- Resumo do treino ---------- */
 const sheetEl = document.getElementById("sheet");
-function sheet(html){ sheetEl.innerHTML = `<div class="sheet-card" role="dialog" aria-modal="true">${html}</div>`; sheetEl.hidden = false; }
+function sheet(html, opts){ opts = opts||{}; sheetEl.dataset.modal = opts.modal ? "1" : ""; sheetEl.dataset.back = opts.back || ""; sheetEl.innerHTML = `<div class="sheet-card" role="dialog" aria-modal="true">${html}</div>`; sheetEl.hidden = false; const c = sheetEl.querySelector(".sheet-card"); if(c) c.scrollTop = 0; }
 function closeSheet(){ sheetEl.hidden = true; sheetEl.innerHTML = ""; }
-sheetEl.addEventListener("click", e=>{ if(e.target===sheetEl || e.target.closest("[data-close]")) closeSheet(); });
+sheetEl.addEventListener("click", e=>{ if((e.target===sheetEl && !sheetEl.dataset.modal) || e.target.closest("[data-close]")) closeSheet(); });
 function openSummary(day){
   const d = dayById(day);
   const ps = dayPersons(d).filter(p=>hasOk(sessDoc(day,p)));
@@ -1277,10 +1339,10 @@ function renderHome(){
       <div class="meta"><span class="pill">${d.ex.filter(e=>ps.some(q=>e[q])).length} exercícios</span><span class="pill">${d.time}</span>${done?`<span class="pill">${done}/${all} séries</span>`:""}</div>
       <button class="gbtn" ${act}>${label}</button></div>`;
   } else {
-    const nxt = DAYS[0];
+    const nxt = nextTrainingDay();
     today = `<div class="hero rest"><span class="eyebrow">Hoje é descanso</span><h2>Dia de recuperar</h2>
       <p>O músculo cresce no descanso. Uma caminhada leve de 30–40 min ajuda na recuperação e no gasto calórico.</p>
-      <div class="meta"><span class="pill">Próximo: quinta · ${nxt.title}</span></div>
+      <div class="meta"><span class="pill">Próximo: ${DOW_NAME[nxt.dow]} · ${nxt.title}</span></div>
       <button class="gbtn alt" data-go="${nxt.id}">Ver o próximo treino</button></div>`;
   }
   const [ws, we] = weekRange();
@@ -1299,7 +1361,7 @@ function renderHome(){
   el.innerHTML = `
     <div class="greet"><h2>${hi}${first}</h2><p>${dateTxt}</p></div>
     ${today}
-    <div class="blk"><h4>Esta semana</h4><div class="wk five">${week}</div></div>
+    <div class="blk"><h4>Esta semana</h4><div class="wk five" style="grid-template-columns:repeat(${DAYS.length},minmax(0,1fr))">${week}</div></div>
     <div class="stats"><div><b>${nMonth}</b><small>treinos no mês</small></div><div><b>${streak}</b><small>${streak===1?"semana seguida":"semanas seguidas"}</small></div><div><b>${wVol?nf.format(Math.round(wVol/100)/10)+"t":"–"}</b><small>volume da semana</small></div></div>
     <p class="small statsnote">Números ${p==="ela"?"dela":"dele"}. Troque no seletor do topo para ver os do outro.</p>
     <div class="blk"><h4>Recordes recentes</h4>${prs.length?`<div class="rows">${prs.map(r=>`<div class="row"><div class="l"><b>${r.name}</b><small>${who(r.p)} · ${ddmm(r.date)}</small></div><div class="r"><b>${load(r.kg,r.u)}</b><small>antes ${load(r.prev,r.u)}</small></div></div>`).join("")}</div>`:`<p class="empty">Quando alguém levantar mais carga que o melhor anterior num exercício, o recorde aparece aqui.</p>`}</div>
@@ -1330,12 +1392,291 @@ document.addEventListener("click", e=>{
 
 /* Botão voltar do Android: fecha o resumo, depois volta para Hoje */
 window.onBack = ()=>{
-  if(!sheetEl.hidden){ closeSheet(); return true; }
+  if(!sheetEl.hidden){ if(sheetEl.dataset.back==="editor"){ efIndex = null; renderEditor(); } else closeSheet(); return true; }
   if(currentView!=="home"){ show("home"); return true; }
   return false;
 };
 
+/* ---------- v4: utilidades ---------- */
+const DOW_NAME = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+const DOW_SHORT = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const DOW_ID = ["dom","seg","ter","qua","qui","sex","sab"];
+const capFirst = s=> s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
+function nextTrainingDay(){
+  for(let k=1;k<=7;k++){ const dw = (dowNow+k)%7; const d = DAYS.find(x=>x.dow===dw); if(d) return d; }
+  return DAYS[0];
+}
+function videoUrl(e,o){
+  if(e.video) return e.video;
+  const q = `${e.n} ${o && o.v ? o.v : ""} execução`.replace(/\([^)]*\)/g," ").replace(/\s+/g," ").trim();
+  return "https://www.youtube.com/results?search_query="+encodeURIComponent(q);
+}
+function nativeRest(p, sec){
+  try{ if(window.AndroidApp && AndroidApp.scheduleRest){ if(sec>0) AndroidApp.scheduleRest(p, sec); else AndroidApp.cancelRest(p); } }catch(e){}
+}
+function slug(s){ return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40) || "ex"; }
+function uniqueKey(base, used){ let k = base, n = 2; while(used.has(k)) k = `${base}-${n++}`; used.add(k); return k; }
+function fmtRest(rs){ rs = Math.round(rs); if(rs<60) return `${rs}s`; if(rs%60===0) return `${rs/60} min`; return `${Math.floor(rs/60)} min ${rs%60}s`; }
+const restText = (p, rs)=> rs===0 ? (p==="ela" ? "no descanso dele" : "no descanso dela") : `desc. ${fmtRest(rs)}`;
+const val = id=>{ const el = document.getElementById(id); return el ? el.value : ""; };
+
+/* ---------- Anotações do aparelho ---------- */
+function noteGet(day,k,p){ const n = docs.notes; return n && n.items ? (n.items[`${day}|${k}|${p}`] || "") : ""; }
+function noteSet(key, text){
+  const cur = docs.notes ? JSON.parse(JSON.stringify(docs.notes)) : {type:"notes", date:"9999-12-30", items:{}};
+  cur.items = cur.items || {};
+  if(text) cur.items[key] = text; else delete cur.items[key];
+  cur.updatedAt = Date.now();
+  docs.notes = cur; persistLocal(); queueWrite("notes"); refresh();
+}
+function openNote(key){
+  const [day,k,p] = key.split("|");
+  const d = dayById(day), e = d && d.ex.find(x=>x.k===k); if(!e) return;
+  sheet(`<span class="eyebrow">Anotação · ${who(p)}</span><h3>${esc(e.n)}</h3>
+    <p class="gsub">Regulagens e lembretes deste exercício: altura do banco, pegada, aparelho usado.</p>
+    <textarea id="note-text" class="ta" rows="4" maxlength="300" placeholder="Ex.: banco na posição 4, pegada fechada">${esc(noteGet(day,k,p))}</textarea>
+    <button class="gbtn" data-note-save="${esc(key)}">Salvar anotação</button>
+    <button class="gbtn alt" data-close>Cancelar</button>`, {modal:true});
+}
+
+/* ---------- Plano: nuvem, limpeza e aplicação ---------- */
+let appliedPlanSig = "default";
+function sanitizeDays(days){
+  return JSON.parse(JSON.stringify(days.map(d=>({
+    id:d.id, dow:d.dow, chip:d.chip, sub:d.sub, eyebrow:d.eyebrow, title:d.title, focus:d.focus, time:d.time, note:d.note||"",
+    ex:d.ex.map(e=>{
+      const out = {n:e.n, k:e.k};
+      if(e.since) out.since = e.since;
+      if(e.video) out.video = e.video;
+      P.forEach(p=>{ const o = e[p]; if(!o) return;
+        out[p] = {s:o.s, d:o.d, t:o.t||"", rs:(o.rest!=null ? o.rest : o.rs), nk:!!o.nk};
+        if(o.v) out[p].v = o.v;
+        if(o.nk) out[p].u = o.u || (o.unit==="s" ? "s" : o.unit==="m" ? "m" : "reps");
+      });
+      return out;
+    })
+  }))));
+}
+function applyPlanFrom(d){
+  const pl = d && d.plan && d.plan.type==="plan" && Array.isArray(d.plan.days) && d.plan.days.length ? d.plan : null;
+  const sig = pl ? String(pl.updatedAt) : "default";
+  if(sig===appliedPlanSig) return;
+  appliedPlanSig = sig;
+  try{ DAYS = prepDays(JSON.parse(JSON.stringify(pl ? pl.days : DEFAULT_DAYS))); }
+  catch(e){ DAYS = prepDays(JSON.parse(JSON.stringify(DEFAULT_DAYS))); }
+  buildViews(); show(currentView);
+}
+function savePlan(days, msg){
+  docs.plan = {type:"plan", date:"9999-12-31", days:sanitizeDays(days), updatedAt:Date.now(), by: me ? me.uid : null};
+  persistLocal(); queueWrite("plan"); applyPlanFrom(docs); refresh();
+  if(msg) toast(msg);
+}
+
+/* ---------- Tela Meu plano ---------- */
+const planView = `<section class="view" id="v-plano" hidden>
+  <div class="dayhead"><span class="eyebrow">Seu treino</span><h2>Meu plano</h2><p>Edite os exercícios de cada dia, importe um treino novo montado no chat do Claude ou volte ao plano original.</p></div>
+  <div class="sec" id="plano-body"></div>
+</section>`;
+let restoreArm = false;
+function renderPlan(){
+  const el = document.getElementById("plano-body"); if(!el) return;
+  const pl = docs.plan && docs.plan.type==="plan" ? docs.plan : null;
+  const origin = pl ? `Alterado em ${new Date(pl.updatedAt).toLocaleDateString("pt-BR")}` : "Plano original montado no chat";
+  const rows = DAYS.map(d=>`<div class="row"><div class="l"><b>${esc(d.chip)} · ${esc(d.title.replace(/^[A-Z]\s*·\s*/,""))}</b><small>${d.ex.length} exercícios · ${esc(d.focus)}</small></div><div class="r"><button class="cta sm alt" data-edit="${d.id}">Editar</button></div></div>`).join("");
+  el.innerHTML = `
+    <div class="blk"><h4>Treino ativo</h4><p class="small">${origin}</p><div class="rows">${rows}</div></div>
+    <div class="blk"><h4>Trocar de treino</h4><p>Peça um treino novo aqui no chat do Claude. Ele te envia um código: toque em <b>Importar treino</b>, cole o código e confira a prévia antes de ativar.</p><button class="cta" data-import>Importar treino</button></div>
+    <div class="blk"><h4>Pedir um ajuste</h4><p>Copie o treino atual e cole no chat do Claude junto com o que você quer mudar. Ele devolve o código já ajustado para importar.</p><button class="cta alt" data-export>Copiar treino atual</button></div>
+    <div class="blk"><h4>Plano original</h4><p class="small">Volta para o treino montado no começo. O histórico de cargas continua guardado.</p><button class="reset" data-restore>${restoreArm?"Toque de novo para restaurar":"Restaurar plano original"}</button></div>`;
+}
+
+/* ---------- Editor ---------- */
+let draft = null, edDayId = null, edArm = null;
+function openEditor(dayId){
+  draft = sanitizeDays(DAYS); edDayId = dayId; edArm = null; renderEditor();
+}
+function edDay(){ return draft.find(d=>d.id===edDayId); }
+function syncEdHeader(){
+  const d = edDay(); if(!d) return;
+  const t = document.getElementById("ed-title"), f = document.getElementById("ed-focus");
+  if(t && t.value.trim()) d.title = t.value.trim();
+  if(f) d.focus = f.value.trim();
+}
+function renderEditor(){
+  const d = edDay(); if(!d) return;
+  const list = d.ex.map((e,i)=>{
+    const sm = P.filter(p=>e[p]).map(p=>`${who(p)}: ${esc(e[p].s)}`).join(" · ");
+    return `<div class="edrow"><div class="l"><b>${i+1}. ${esc(e.n)}</b><small>${sm}</small></div>
+      <div class="edbtns"><button class="ib" data-ed-up="${i}" aria-label="Subir" ${i===0?"disabled":""}>↑</button><button class="ib" data-ed-down="${i}" aria-label="Descer" ${i===d.ex.length-1?"disabled":""}>↓</button>
+      <button class="cta sm alt" data-ed-edit="${i}">Editar</button><button class="cta sm del${edArm===i?" armed":""}" data-ed-del="${i}">${edArm===i?"Confirmar":"Remover"}</button></div></div>`;
+  }).join("");
+  sheet(`<span class="eyebrow">Editar treino · ${esc(d.chip)}</span>
+    <label class="gfld2"><span>Nome do treino</span><input id="ed-title" class="tin" value="${esc(d.title)}" maxlength="40"></label>
+    <label class="gfld2"><span>Foco</span><input id="ed-focus" class="tin" value="${esc(d.focus)}" maxlength="60"></label>
+    <div class="edlist">${list || `<p class="empty">Nenhum exercício. Adicione o primeiro.</p>`}</div>
+    <button class="cta alt" data-ed-add>+ Adicionar exercício</button>
+    <p class="small">Editar mantém o histórico de cargas do exercício. Para trocar por outro exercício, remova e adicione um novo.</p>
+    <button class="gbtn" data-ed-save>Salvar alterações</button>
+    <button class="gbtn alt" data-close>Cancelar</button>`, {modal:true});
+}
+function exFormHtml(e){
+  const blocks = P.map(p=>{
+    const o = e ? e[p] : null, on = e ? !!o : true;
+    const n = o ? (parseInt(o.s,10) || 3) : 3;
+    const reps = o ? o.s.replace(/^\s*\d+\s*×\s*/,"") : (p==="ela" ? "12–15" : "8–12");
+    const tipo = !o || !o.nk ? "kg" : (o.u==="s" ? "s" : o.u==="m" ? "m" : "reps");
+    const rs = o ? (o.rs!=null ? o.rs : 60) : (p==="ela" ? 60 : 90);
+    return `<fieldset class="ef ${p}"><legend><label class="chk2"><input type="checkbox" id="ef-${p}-on" ${on?"checked":""}> ${who(p)} faz este exercício</label></legend>
+      <label class="gfld2"><span>Variação (opcional)</span><input id="ef-${p}-v" class="tin" value="${esc(o&&o.v||"")}" placeholder="Ex.: com halteres, na máquina" maxlength="70"></label>
+      <div class="two"><label class="gfld2"><span>Séries</span><input id="ef-${p}-n" class="tin" inputmode="numeric" value="${n}"></label>
+      <label class="gfld2"><span>Repetições</span><input id="ef-${p}-r" class="tin" value="${esc(reps)}" placeholder="10–12"></label></div>
+      <div class="two"><label class="gfld2"><span>Tipo</span><select id="ef-${p}-tipo" class="tin">
+        <option value="kg" ${tipo==="kg"?"selected":""}>Com carga</option><option value="reps" ${tipo==="reps"?"selected":""}>Peso do corpo</option>
+        <option value="s" ${tipo==="s"?"selected":""}>Tempo (segundos)</option><option value="m" ${tipo==="m"?"selected":""}>Distância (metros)</option></select></label>
+      <label class="gfld2"><span>Descanso (segundos)</span><input id="ef-${p}-rs" class="tin" inputmode="numeric" value="${rs}"></label></div>
+      <label class="gfld2"><span>Dica técnica</span><textarea id="ef-${p}-t" class="ta" rows="3" maxlength="400">${esc(o&&o.t||"")}</textarea></label>
+      <p class="small">Descanso 0 = sem cronômetro (feito no descanso do outro).</p></fieldset>`;
+  }).join("");
+  return `<span class="eyebrow">${e?"Editar exercício":"Novo exercício"}</span>
+    <label class="gfld2"><span>Nome do exercício</span><input id="ef-n" class="tin" value="${esc(e?e.n:"")}" maxlength="60" placeholder="Ex.: Remada cavalinho"></label>
+    <label class="gfld2"><span>Link do vídeo (opcional)</span><input id="ef-video" class="tin" value="${esc(e&&e.video||"")}" placeholder="Vazio = busca no YouTube"></label>
+    ${blocks}<p class="gerr" id="ef-err" hidden></p>
+    <button class="gbtn" data-ef-save>Salvar exercício</button>
+    <button class="gbtn alt" data-ef-back>Voltar</button>`;
+}
+let efIndex = null;
+function openExForm(i){ syncEdHeader(); efIndex = i; const d = edDay(); sheet(exFormHtml(i==null ? null : d.ex[i]), {modal:true, back:"editor"}); }
+function saveExForm(){
+  const err = m=>{ const el = document.getElementById("ef-err"); el.textContent = m; el.hidden = false; el.scrollIntoView({block:"center"}); };
+  const d = edDay(), name = val("ef-n").trim(), video = val("ef-video").trim();
+  if(!name) return err("Dê um nome ao exercício.");
+  if(video && !/^https?:\/\//.test(video)) return err("O link do vídeo precisa começar com https://");
+  const prev = efIndex==null ? null : d.ex[efIndex];
+  const ex = {n:name, k: prev ? prev.k : uniqueKey(slug(name), new Set(d.ex.map(x=>x.k)))};
+  if(prev && prev.since) ex.since = prev.since;
+  if(video) ex.video = video;
+  let any = false;
+  for(const p of P){
+    if(!document.getElementById(`ef-${p}-on`).checked) continue;
+    const n = parseInt(val(`ef-${p}-n`),10), reps = val(`ef-${p}-r`).trim(), tipo = val(`ef-${p}-tipo`), rs = parseInt(val(`ef-${p}-rs`),10);
+    if(!(n>=1 && n<=10)) return err(`Séries de ${who(p).toLowerCase()}: use um número de 1 a 10.`);
+    if(!/^\d/.test(reps)) return err(`Repetições de ${who(p).toLowerCase()}: comece com um número, como 12 ou 10–12.`);
+    if(!(rs>=0 && rs<=600)) return err(`Descanso de ${who(p).toLowerCase()}: use segundos, de 0 a 600.`);
+    const o = {s:`${n} × ${reps}`, d:restText(p, rs), rs, t:val(`ef-${p}-t`).trim(), nk: tipo!=="kg"};
+    const v = val(`ef-${p}-v`).trim(); if(v) o.v = v;
+    if(tipo!=="kg") o.u = tipo;
+    ex[p] = o; any = true;
+  }
+  if(!any) return err("Marque pelo menos uma pessoa.");
+  if(efIndex==null) d.ex.push(ex); else d.ex[efIndex] = ex;
+  efIndex = null; renderEditor();
+}
+
+/* ---------- Importar e copiar treino ---------- */
+function parsePlanText(txt){
+  let t = (txt||"").replace(/```[a-z]*/gi,"").trim();
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if(a<0 || b<=a) throw new Error("Não encontrei o código do treino. Cole o texto inteiro, do { ao }.");
+  let obj;
+  try{ obj = JSON.parse(t.slice(a,b+1)); }catch(e){ throw new Error("O código está incompleto ou foi alterado. Copie de novo a mensagem inteira do Claude."); }
+  const arr = obj.days || obj.dias;
+  if(!Array.isArray(arr) || !arr.length) throw new Error("O código não tem nenhum dia de treino.");
+  const nameDow = {domingo:0,segunda:1,"terça":2,terca:2,quarta:3,quinta:4,sexta:5,"sábado":6,sabado:6};
+  const usedDow = new Set();
+  return arr.map((d,k)=>{
+    let dow = typeof d.dow==="number" ? d.dow : nameDow[String(d.dia||d.dow||"").toLowerCase().split("-")[0].trim()];
+    if(!(dow>=0 && dow<=6)) throw new Error(`Dia ${k+1}: falta o dia da semana.`);
+    if(usedDow.has(dow)) throw new Error(`O dia ${DOW_NAME[dow]} aparece duas vezes.`);
+    usedDow.add(dow);
+    const id = DOW_ID[dow];
+    const title = String(d.title || d.titulo || `Treino ${String.fromCharCode(65+k)}`).trim();
+    const letter = (title.match(/^([A-Z])\s*·/)||[])[1] || String.fromCharCode(65+k);
+    const exs = d.ex || d.exercicios;
+    if(!Array.isArray(exs) || !exs.length) throw new Error(`${capFirst(DOW_NAME[dow])}: nenhum exercício.`);
+    const cur = dayById(id), used = new Set();
+    const ex = exs.map((e,j)=>{
+      const n = String(e.n || e.nome || "").trim();
+      if(!n) throw new Error(`${capFirst(DOW_NAME[dow])}, exercício ${j+1}: falta o nome.`);
+      const same = cur && cur.ex.find(x=>slug(x.n)===slug(n));
+      const out = {n, k: e.k || (same && !used.has(same.k) ? same.k : null)};
+      if(out.k) used.add(out.k); else out.k = uniqueKey(slug(n), used);
+      if(e.video) out.video = e.video;
+      let any = false;
+      P.forEach(p=>{
+        const o = e[p]; if(!o) return;
+        const s = String(o.s || (o.series && o.reps ? `${o.series} × ${o.reps}` : "")).trim();
+        if(!/^\d+\s*×/.test(s)) throw new Error(`${n} (${who(p).toLowerCase()}): séries e repetições no formato "3 × 12".`);
+        const rs = o.rs!=null ? +o.rs : (o.descanso!=null ? +o.descanso : 60);
+        const tipo = o.u || (o.tipo==="tempo" ? "s" : o.tipo==="distancia" ? "m" : o.tipo==="corpo" ? "reps" : null);
+        out[p] = {s, d: o.d || restText(p, rs), rs, t: String(o.t || o.dica || ""), nk: !!(o.nk || (tipo && tipo!=="kg"))};
+        if(o.v || o.variacao) out[p].v = o.v || o.variacao;
+        if(out[p].nk) out[p].u = tipo || "reps";
+        any = true;
+      });
+      if(!any) throw new Error(`${n}: falta o treino de ela ou dele.`);
+      return out;
+    });
+    return {id, dow, chip:`${DOW_SHORT[dow]} · ${letter}`, sub: d.sub || (title.split("·")[1] || title).trim().slice(0,14),
+      eyebrow:`Dia ${k+1} · ${capFirst(DOW_NAME[dow])}`, title, focus: String(d.focus || d.foco || ""), time: d.time || d.tempo || "≈ 50 min", note: d.note || d.nota || "", ex};
+  });
+}
+let importDraft = null;
+function openImport(){
+  importDraft = null;
+  sheet(`<span class="eyebrow">Importar treino</span><h3>Colar código</h3>
+    <p class="gsub">Cole aqui o código que o Claude enviou no chat.</p>
+    <textarea id="imp-text" class="ta mono" rows="8" placeholder='{"app":"treino-a-dois", ...}'></textarea>
+    <p class="gerr" id="imp-err" hidden></p>
+    <button class="gbtn" data-imp-preview>Ver prévia</button>
+    <button class="gbtn alt" data-close>Cancelar</button>`, {modal:true});
+}
+function previewImport(){
+  const errEl = document.getElementById("imp-err");
+  try{ importDraft = parsePlanText(val("imp-text")); }
+  catch(e){ errEl.textContent = e.message; errEl.hidden = false; return; }
+  const days = importDraft.map(d=>`<div class="pv"><b>${esc(d.chip)} · ${esc(d.title.replace(/^[A-Z]\s*·\s*/,""))}</b><small>${esc(d.focus)}</small><ol>${d.ex.map(e=>`<li>${esc(e.n)}<span class="small"> · ${P.filter(p=>e[p]).map(p=>`${who(p)} ${esc(e[p].s)}`).join(" · ")}</span></li>`).join("")}</ol></div>`).join("");
+  sheet(`<span class="eyebrow">Prévia do treino</span><h3>${importDraft.length} dias de treino</h3>${days}
+    <p class="small">Exercícios com o mesmo nome no mesmo dia continuam com o histórico de cargas.</p>
+    <button class="gbtn" data-imp-apply>Ativar este treino</button>
+    <button class="gbtn alt" data-import>Voltar</button>`, {modal:true});
+}
+function exportText(){
+  const days = sanitizeDays(DAYS).map(d=>({dow:d.dow, title:d.title, focus:d.focus, time:d.time, note:d.note, ex:d.ex}));
+  return JSON.stringify({app:"treino-a-dois", versao:1, days});
+}
+function copyPlan(){
+  const txt = exportText();
+  const fallback = ()=> sheet(`<span class="eyebrow">Copiar treino</span><h3>Treino atual</h3><p class="gsub">Toque no texto, selecione tudo e copie.</p><textarea class="ta mono" rows="8" readonly>${esc(txt)}</textarea><button class="gbtn alt" data-close>Fechar</button>`);
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(()=>toast("Treino copiado. Cole no chat do Claude junto com o ajuste que você quer."), fallback);
+    else fallback();
+  }catch(e){ fallback(); }
+}
+
+/* ---------- Toques da v4 ---------- */
+document.addEventListener("click", e=>{
+  const t = e.target;
+  const ed = t.closest("[data-edit]"); if(ed){ openEditor(ed.dataset.edit); return; }
+  if(t.closest("[data-ed-add]")){ openExForm(null); return; }
+  const ee = t.closest("[data-ed-edit]"); if(ee){ openExForm(+ee.dataset.edEdit); return; }
+  const up = t.closest("[data-ed-up]"); if(up){ syncEdHeader(); const d = edDay(), i = +up.dataset.edUp; if(i>0){ [d.ex[i-1],d.ex[i]] = [d.ex[i],d.ex[i-1]]; } edArm = null; renderEditor(); return; }
+  const dn = t.closest("[data-ed-down]"); if(dn){ syncEdHeader(); const d = edDay(), i = +dn.dataset.edDown; if(i<d.ex.length-1){ [d.ex[i+1],d.ex[i]] = [d.ex[i],d.ex[i+1]]; } edArm = null; renderEditor(); return; }
+  const dl = t.closest("[data-ed-del]"); if(dl){ syncEdHeader(); const i = +dl.dataset.edDel, d = edDay(); if(edArm===i){ d.ex.splice(i,1); edArm = null; } else edArm = i; renderEditor(); return; }
+  if(t.closest("[data-ed-save]")){ syncEdHeader(); if(!edDay().ex.length){ toast("O treino precisa de pelo menos um exercício."); return; } savePlan(draft, "Treino salvo"); closeSheet(); return; }
+  if(t.closest("[data-ef-save]")){ saveExForm(); return; }
+  if(t.closest("[data-ef-back]")){ efIndex = null; renderEditor(); return; }
+  if(t.closest("[data-import]")){ openImport(); return; }
+  if(t.closest("[data-imp-preview]")){ previewImport(); return; }
+  if(t.closest("[data-imp-apply]")){ if(importDraft){ savePlan(importDraft, "Treino importado e ativado"); importDraft = null; closeSheet(); show("home"); } return; }
+  if(t.closest("[data-export]")){ copyPlan(); return; }
+  const rs = t.closest("[data-restore]");
+  if(rs){ if(restoreArm){ restoreArm = false; savePlan(JSON.parse(JSON.stringify(DEFAULT_DAYS)), "Plano original restaurado"); } else { restoreArm = true; renderPlan(); setTimeout(()=>{ restoreArm = false; renderPlan(); }, 3000); } return; }
+  const nb = t.closest("[data-note]"); if(nb){ openNote(nb.dataset.note); return; }
+  const ns = t.closest("[data-note-save]"); if(ns){ noteSet(ns.dataset.noteSave, val("note-text").trim().slice(0,300)); closeSheet(); toast("Anotação salva"); return; }
+});
+
 /* ---------- Início ---------- */
+buildViews();
 mode(store.get("mode") || "ambos");
 setMode("loading");
 const hash = (location.hash||"").slice(1);

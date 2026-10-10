@@ -9,6 +9,12 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -43,6 +49,7 @@ public class MainActivity extends Activity {
     private static final String START_URL =
             "https://appassets.androidplatform.net/assets/index.html";
 
+    static volatile boolean foreground = false;
     private WebView web;
     private CredentialManager credentials;
     private Executor mainExecutor;
@@ -73,7 +80,17 @@ public class MainActivity extends Activity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 return loader.shouldInterceptRequest(request.getUrl());
             }
+
+            // Links de fora do app (vídeos do YouTube) abrem no app do YouTube ou no navegador
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                Uri u = request.getUrl();
+                if ("appassets.androidplatform.net".equals(u.getHost())) return false;
+                try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Exception ignored) { }
+                return true;
+            }
         });
+        RestReceiver.ensureChannel(this);
         web.addJavascriptInterface(new Bridge(), "AndroidApp");
         setContentView(web);
 
@@ -133,13 +150,60 @@ public class MainActivity extends Activity {
         public void signOut() { runOnUiThread(MainActivity.this::signOut); }
 
         @JavascriptInterface
-        public String version() { return "3.0"; }
+        public void scheduleRest(String who, int seconds) { runOnUiThread(() -> MainActivity.this.scheduleRest(who, seconds)); }
+
+        @JavascriptInterface
+        public void cancelRest(String who) { runOnUiThread(() -> MainActivity.this.cancelRest(who)); }
+
+        @JavascriptInterface
+        public String version() { return "4.0"; }
     }
 
     @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         web.saveState(out);
+    }
+
+    private PendingIntent restIntent(String who) {
+        Intent i = new Intent(this, RestReceiver.class).putExtra("who", who);
+        return PendingIntent.getBroadcast(this, "ela".equals(who) ? 1 : 2, i,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private boolean askedNotif = false;
+
+    private void scheduleRest(String who, int seconds) {
+        if (Build.VERSION.SDK_INT >= 33 && !askedNotif
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            askedNotif = true;
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
+        }
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        long at = System.currentTimeMillis() + seconds * 1000L;
+        PendingIntent pi = restIntent(who);
+        am.cancel(pi);
+        if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+        else am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+    }
+
+    private void cancelRest(String who) {
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        am.cancel(restIntent(who));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        foreground = true;
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.cancel(1); nm.cancel(2);
+    }
+
+    @Override
+    protected void onPause() {
+        foreground = false;
+        super.onPause();
     }
 
     private boolean isNight() {

@@ -70,6 +70,6 @@ jobs:
       - name: Publicar para download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.${{ github.run_number }}
+          tag_name: v4.${{ github.run_number }}
           name: Treino a Dois ${{ github.run_number }}
           files: TreinoADois.apk
