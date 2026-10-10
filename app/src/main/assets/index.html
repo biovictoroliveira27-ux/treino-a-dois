@@ -79,6 +79,10 @@ button{font:inherit;color:inherit}
 .last b{color:var(--fg);font-weight:600}
 .up{font-size:12.5px;font-weight:600;color:var(--warn)}
 
+.ubar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.useg{display:inline-flex;background:var(--field);border:1px solid var(--line);border-radius:999px;padding:2px}
+.useg button{border:0;background:transparent;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;min-height:28px}
+.useg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .sets{display:grid;gap:6px}
 .set{display:grid;grid-template-columns:20px minmax(0,1fr) minmax(0,1fr) 44px;gap:6px;align-items:center}
 .set.nk{grid-template-columns:20px minmax(0,1fr) 44px}
@@ -240,9 +244,9 @@ const DAYS = [
   {n:"Cadeira extensora",
    ela:{s:"3 × 15",d:"desc. 45s",t:"Costas apoiadas, mãos nas alças. Suba controlando, sem trancos."},
    ele:{s:"3 × 10–12 + drop-set na última",d:"desc. 60–90s",t:"Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."}},
-  {n:"Elevação pélvica (hip thrust)",
-   ela:{s:"4 × 12–15",d:"desc. 60s",t:"Queixo levemente para o peito e costelas para baixo. Suba até alinhar quadril e tronco e pare ali: não arqueie a lombar no topo. Quem sobe é o glúteo."},
-   ele:{s:"3 × 8–12",d:"desc. 90s",t:"Pausa de 2s no topo apertando o glúteo. Canelas verticais no ponto alto."}},
+  {n:"Pull-through na polia (glúteo)", since:"2026-10-10",
+   ela:{s:"3 × 12–15",d:"desc. 60s",t:"De costas para a polia baixa, com a corda passando entre as pernas. Empurre o quadril para trás com a coluna reta e volte apertando o glúteo. No fim, fique em pé alta, sem jogar o tronco para trás."},
+   ele:{s:"3 × 10–12",d:"desc. 90s",t:"Desça até alongar bem o posterior de coxa e suba com força de quadril, não de braço. Segure 2s em pé apertando o glúteo."}},
   {n:"Panturrilha em pé",
    ela:{s:"3 × 15–20",d:"desc. 30–45s",t:"Movimento completo e sem pressa."},
    ele:{s:"3 × 10–15",d:"desc. 60s",t:"Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."}},
@@ -647,6 +651,28 @@ function initFirebase(){
   });
 }
 
+/* ---------- Unidade de carga: kg ou barras da polia ---------- */
+function load(v,u){ if(v==null) return "–"; return u==="br" ? `${nf.format(v)} ${v===1?"barra":"barras"}` : `${nf.format(v)} kg`; }
+function unitFor(day,i,p,prev){
+  const t = docs[sid(day,p)];
+  if(t && t.units && t.units[i]) return t.units[i];
+  if(prev===undefined){ const e = dayById(day).ex[i]; prev = prevSession(day,p); if(e.since && prev && prev.date < e.since) prev = null; }
+  if(prev){
+    if(prev.units && prev.units[i]) return prev.units[i];
+    const ss = okSets(prev,i); if(ss.length && ss[ss.length-1].u) return ss[ss.length-1].u;
+  }
+  return "kg";
+}
+function saveUnit(day,i,p,u){
+  if(unitFor(day,i,p)===u) return;
+  const id = sid(day,p);
+  const cur = docs[id] ? JSON.parse(JSON.stringify(docs[id])) : {date:TODAY, day, person:p, sets:{}};
+  cur.units = {...(cur.units||{}), [i]:u};
+  if(cur.sets && cur.sets[i]) Object.values(cur.sets[i]).forEach(v=>{ if(v) v.u = u; });
+  cur.updatedAt = Date.now();
+  docs[id] = cur; persistLocal(); queueWrite(id); refresh();
+}
+
 /* ---------- Histórico derivado ---------- */
 function prevSession(day,p){
   let best = null;
@@ -670,7 +696,7 @@ function whoBlock(d,i,e,p){
   const rows = Array.from({length:o.n},(_,s)=>{
     const k = `${d.id}-${i}-${p}-${s}`;
     const uLbl = o.unit==="s" ? "Segundos" : (o.unit==="m" ? "Metros" : "Repetições");
-    const kf = o.nk ? "" : `<label class="fld"><input id="k-${k}" class="kg" inputmode="decimal" autocomplete="off" aria-label="Carga da série ${s+1}"><span>kg</span></label>`;
+    const kf = o.nk ? "" : `<label class="fld"><input id="k-${k}" class="kg" inputmode="decimal" autocomplete="off" aria-label="Carga da série ${s+1}"><span class="uk">kg</span></label>`;
     const rf = `<label class="fld"><input id="r-${k}" class="rp" inputmode="numeric" autocomplete="off" aria-label="${uLbl} da série ${s+1}"><span>${o.unit}</span></label>`;
     return `<div class="set${o.nk?" nk":""}" data-day="${d.id}" data-i="${i}" data-p="${p}" data-s="${s}"><span class="sn">${s+1}</span>${kf}${rf}<button class="ok" aria-pressed="false" aria-label="Concluir série ${s+1}">${checkSvg}</button></div>`;
   }).join("");
@@ -679,6 +705,7 @@ function whoBlock(d,i,e,p){
     ${o.v?`<div class="var">${o.v}</div>`:""}
     <p class="tip">${o.t}</p>
     <div class="last" id="last-${d.id}-${i}-${p}" hidden></div>
+    ${o.nk?"":`<div class="ubar">Carga em <span class="useg" data-day="${d.id}" data-i="${i}" data-p="${p}"><button data-u="kg" aria-pressed="true">kg</button><button data-u="br" aria-pressed="false">barras</button></span></div>`}
     <div class="sets">${rows}</div></div>`;
 }
 
@@ -709,14 +736,14 @@ function lastHtml(o,prev,i){
   let body;
   if(o.nk) body = sets.map(v=>`${nf.format(v.r||0)}${o.unit==="s"?"s":""}`).join(" · ");
   else {
-    const kgs = sets.map(v=>v.kg);
-    body = kgs.every(k=>k===kgs[0])
-      ? `<b>${kgs[0]!=null?nf.format(kgs[0])+" kg":"sem carga"}</b> × ${sets.map(v=>nf.format(v.r||0)).join(" · ")}`
-      : sets.map(v=>`<b>${v.kg!=null?nf.format(v.kg):"–"}</b>×${nf.format(v.r||0)}`).join(" · ");
+    const lds = sets.map(v=>load(v.kg,v.u));
+    body = lds.every(k=>k===lds[0])
+      ? `<b>${sets[0].kg!=null?lds[0]:"sem carga"}</b> × ${sets.map(v=>nf.format(v.r||0)).join(" · ")}`
+      : sets.map(v=>`<b>${v.kg!=null?load(v.kg,v.u):"–"}</b> × ${nf.format(v.r||0)}`).join(" · ");
   }
   let up = "";
   if(!o.nk && o.hi && sets.length>=o.n && sets.every(v=>(v.r||0)>=o.hi))
-    up = `<div class="up">Bateu ${o.hi} em todas as séries: suba 2–5% a carga hoje</div>`;
+    up = `<div class="up">Bateu ${o.hi} em todas as séries: ${(sets[sets.length-1].u==="br")?"suba 1 barra hoje":"suba 2–5% a carga hoje"}</div>`;
   return `Última vez (${ddmm(prev.date)}): ${body}${up}`;
 }
 
@@ -730,9 +757,13 @@ function syncDay(d){
     P.forEach(p=>{
       const o = e[p]; if(!o) return;
       const last = document.getElementById(`last-${d.id}-${i}-${p}`);
-      const lh = lastHtml(o, prev[p], i);
+      const pv = e.since && prev[p] && prev[p].date < e.since ? null : prev[p];
+      const u = o.nk ? "kg" : unitFor(d.id,i,p,pv);
+      const ug = view.querySelector(`.useg[data-i="${i}"][data-p="${p}"]`);
+      if(ug) ug.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.u===u));
+      const lh = lastHtml(o, pv, i);
       last.innerHTML = lh; last.hidden = !lh;
-      const pset = okSets(prev[p], i);
+      const pset = okSets(pv, i).filter(x=>(x.u||"kg")===u);
       for(let s=0;s<o.n;s++){
         const k = `${d.id}-${i}-${p}-${s}`;
         const v = getSet(d.id,p,i,s);
@@ -742,6 +773,7 @@ function syncDay(d){
         row.querySelector(".ok").setAttribute("aria-pressed", on);
         const ref = pset[s] || pset[pset.length-1];
         const kg = document.getElementById("k-"+k), rp = document.getElementById("r-"+k);
+        const uk = row.querySelector(".uk"); if(uk) uk.textContent = u==="br" ? "barras" : "kg";
         if(kg){ kg.placeholder = ref && ref.kg!=null ? nf.format(ref.kg) : "–"; if(document.activeElement!==kg) kg.value = v && v.kg!=null ? nf.format(v.kg) : ""; }
         if(rp){ rp.placeholder = ref && ref.r!=null ? nf.format(ref.r) : String(o.hi||""); if(document.activeElement!==rp) rp.value = v && v.r!=null ? nf.format(v.r) : ""; }
         if(ps.includes(p)){ all++; if(on) done++; }
@@ -756,7 +788,7 @@ function syncDay(d){
 
 function volume(x){
   let v = 0, n = 0;
-  for(const i in (x.sets||{})) okSets(x,i).forEach(s=>{ n++; if(s.kg!=null && s.r) v += s.kg*s.r; });
+  for(const i in (x.sets||{})) okSets(x,i).forEach(s=>{ n++; if(s.kg!=null && s.r && s.u!=="br") v += s.kg*s.r; });
   return {v,n};
 }
 
@@ -788,14 +820,19 @@ function renderHist(){
     const rows = [];
     DAYS.forEach(d=>d.ex.forEach((e,i)=>{
       const o = e[p]; if(!o || o.nk) return;
-      const pts = list.filter(x=>x.day===d.id && x.person===p).map(x=>{
-        const ks = okSets(x,i).map(s=>s.kg).filter(k=>k!=null);
-        return ks.length ? {date:x.date, kg:Math.max(...ks)} : null;
+      let pts = list.filter(x=>x.day===d.id && x.person===p && (!e.since || x.date>=e.since)).map(x=>{
+        const ss = okSets(x,i).filter(s=>s.kg!=null);
+        if(!ss.length) return null;
+        const u = ss[ss.length-1].u||"kg";
+        const ks = ss.filter(s=>(s.u||"kg")===u).map(s=>s.kg);
+        return {date:x.date, kg:Math.max(...ks), u};
       }).filter(Boolean).sort((a,b)=>a.date<b.date?-1:1);
       if(!pts.length) return;
-      const lastP = pts[pts.length-1], diff = lastP.kg - pts[0].kg;
-      const sub = pts.length===1 ? "1º registro" : (diff>0 ? `<span class="delta pos">▲ ${nf.format(diff)} kg</span> em ${pts.length} treinos` : (diff<0 ? `▼ ${nf.format(-diff)} kg em ${pts.length} treinos` : `igual em ${pts.length} treinos`));
-      rows.push(`<div class="row"><div class="l"><b>${e.n}</b><small>${d.chip}${o.v?" · "+o.v:""}</small></div><div class="r"><b>${nf.format(lastP.kg)} kg</b><small>${sub}</small></div></div>`);
+      const lastP = pts[pts.length-1];
+      pts = pts.filter(x=>x.u===lastP.u);
+      const diff = lastP.kg - pts[0].kg;
+      const sub = pts.length===1 ? "1º registro" : (diff>0 ? `<span class="delta pos">▲ ${load(diff,lastP.u)}</span> em ${pts.length} treinos` : (diff<0 ? `▼ ${load(-diff,lastP.u)} em ${pts.length} treinos` : `igual em ${pts.length} treinos`));
+      rows.push(`<div class="row"><div class="l"><b>${e.n}</b><small>${d.chip}${o.v?" · "+o.v:""}</small></div><div class="r"><b>${load(lastP.kg,lastP.u)}</b><small>${sub}</small></div></div>`);
     }));
     return `<div class="blk ${p}"><h4>Evolução de carga · ${p==="ela"?"Ela":"Ele"}</h4>${rows.length?`<div class="rows">${rows.join("")}</div>`:`<p class="empty">As cargas aparecem aqui depois do primeiro treino registrado.</p>`}</div>`;
   }).join("");
@@ -857,6 +894,8 @@ function rowCtx(row){
 }
 const main = document.getElementById("main");
 main.addEventListener("click", e=>{
+  const ub = e.target.closest(".useg button");
+  if(ub){ const g = ub.parentElement; saveUnit(g.dataset.day, +g.dataset.i, g.dataset.p, ub.dataset.u); return; }
   const btn = e.target.closest(".ok");
   if(btn){
     const row = btn.closest(".set"), c = rowCtx(row);
@@ -865,7 +904,7 @@ main.addEventListener("click", e=>{
     const kgI = row.querySelector(".kg"), rpI = row.querySelector(".rp");
     const kg = kgI ? (num(kgI.value) ?? num(kgI.placeholder)) : null;
     const r = num(rpI.value) ?? num(rpI.placeholder);
-    saveSet(c.day,c.p,c.i,c.s,{kg, r, ok:true});
+    saveSet(c.day,c.p,c.i,c.s,{kg, r, u: unitFor(c.day,c.i,c.p), ok:true});
     ensureAudio(); keepAwake();
     if(c.o.rest>0) startTimer(c.p, c.o.rest);
     return;
@@ -881,7 +920,7 @@ main.addEventListener("change", e=>{
   const row = inp.closest(".set"), c = rowCtx(row);
   const cur = getSet(c.day,c.p,c.i,c.s) || {};
   const kgI = row.querySelector(".kg"), rpI = row.querySelector(".rp");
-  saveSet(c.day,c.p,c.i,c.s,{kg: kgI ? num(kgI.value) : null, r: num(rpI.value), ok: !!cur.ok});
+  saveSet(c.day,c.p,c.i,c.s,{kg: kgI ? num(kgI.value) : null, r: num(rpI.value), u: unitFor(c.day,c.i,c.p), ok: !!cur.ok});
 });
 
 /* ---------- Cronômetro de descanso ---------- */

@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
         public void signOut() { runOnUiThread(MainActivity.this::signOut); }
 
         @JavascriptInterface
-        public String version() { return "2.0"; }
+        public String version() { return "2.1"; }
     }
 
     @Override
