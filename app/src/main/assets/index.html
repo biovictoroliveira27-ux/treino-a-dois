@@ -163,6 +163,9 @@ body.m-ela .dot.ele, body.m-ele .dot.ela{display:none}
 #gate[hidden]{display:none}
 .gcard{max-width:420px;width:100%;display:grid;gap:14px}
 .gcard h1{font-size:48px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+.brandh{display:flex;align-items:center;gap:8px}
+.logo svg{width:30px;height:30px;display:block}
+.glogo svg{width:84px;height:84px;display:block;margin-bottom:4px}
 .gtag{margin:-10px 0 0;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .gsub{margin:0;color:var(--muted);font-size:16px}
 .gbtn{height:54px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);font-weight:600;font-size:17px;cursor:pointer}
@@ -323,7 +326,13 @@ select.tin{appearance:auto}
 <div class="top" id="top">
   <div class="wrap" style="padding-block:0">
     <div class="brand">
-      <h1>Spotter</h1>
+      <h1 class="brandh"><span class="logo"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#1B2220"/><rect x="70" y="243" width="372" height="26" rx="13" fill="#E8ECEA"/>
+<rect x="112" y="186" width="34" height="140" rx="10" fill="#E8ECEA"/><rect x="76" y="211" width="28" height="90" rx="9" fill="#E8ECEA"/>
+<rect x="366" y="186" width="34" height="140" rx="10" fill="#E8ECEA"/><rect x="408" y="211" width="28" height="90" rx="9" fill="#E8ECEA"/>
+<path d="M318 182 A64 64 0 1 0 256 256" fill="none" stroke="#1B2220" stroke-width="76" stroke-linecap="round"/>
+<path d="M256 256 A64 64 0 1 1 194 330" fill="none" stroke="#1B2220" stroke-width="76" stroke-linecap="round"/>
+<path d="M318 182 A64 64 0 1 0 256 256" fill="none" stroke="#4CC2B4" stroke-width="50" stroke-linecap="round"/>
+<path d="M256 256 A64 64 0 1 1 194 330" fill="none" stroke="#F0954F" stroke-width="50" stroke-linecap="round"/></svg></span>Spotter</h1>
       <div class="seg" role="group" aria-label="Mostrar treino de">
         <button data-p="ela" id="m-ela">Ela</button>
         <button data-p="ambos" id="m-ambos">Juntos</button>
@@ -696,7 +705,13 @@ function gate(state, msg){
     <div class="gor">ou</div>
     <label class="gfld"><span>Código que o seu par te enviou</span><input id="g-code" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="Ex.: K7QF2M"></label>
     <button class="gbtn alt" id="g-join">Entrar no casal</button>${err}`;
-  gateEl.innerHTML = `<div class="gcard"><h1>Spotter</h1><p class="gtag">Treino a dois</p>${body}</div>`;
+  gateEl.innerHTML = `<div class="gcard"><div class="glogo"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#1B2220"/><rect x="70" y="243" width="372" height="26" rx="13" fill="#E8ECEA"/>
+<rect x="112" y="186" width="34" height="140" rx="10" fill="#E8ECEA"/><rect x="76" y="211" width="28" height="90" rx="9" fill="#E8ECEA"/>
+<rect x="366" y="186" width="34" height="140" rx="10" fill="#E8ECEA"/><rect x="408" y="211" width="28" height="90" rx="9" fill="#E8ECEA"/>
+<path d="M318 182 A64 64 0 1 0 256 256" fill="none" stroke="#1B2220" stroke-width="76" stroke-linecap="round"/>
+<path d="M256 256 A64 64 0 1 1 194 330" fill="none" stroke="#1B2220" stroke-width="76" stroke-linecap="round"/>
+<path d="M318 182 A64 64 0 1 0 256 256" fill="none" stroke="#4CC2B4" stroke-width="50" stroke-linecap="round"/>
+<path d="M256 256 A64 64 0 1 1 194 330" fill="none" stroke="#F0954F" stroke-width="50" stroke-linecap="round"/></svg></div><h1>Spotter</h1><p class="gtag">Treino a dois</p>${body}</div>`;
 }
 gateEl.addEventListener("click", async e=>{
   const b = e.target.closest("button"); if(!b) return;
