@@ -1695,22 +1695,25 @@ document.addEventListener("click", e=>{
 /* ---------- v5: sincronização com o relógio (Galaxy Watch) ---------- */
 let lastWatchKey = "", watchT = null;
 function watchSnapshot(){
-  const p = (profile && profile.role) || myRole();
-  const d = todayDay;
-  const snap = {v:1, date:TODAY, role:p, updatedAt:Date.now(), day:null, ex:[]};
-  if(d){
-    snap.day = {id:d.id, title:d.title, focus:d.focus};
-    const prev = prevSession(d.id,p);
+  const role = (profile && profile.role) || myRole();
+  const snap = {v:2, date:TODAY, role, updatedAt:Date.now(), today: todayDay ? todayDay.id : null, days:[]};
+  DAYS.forEach(d=>{
+    const prev = {ela:prevSession(d.id,"ela"), ele:prevSession(d.id,"ele")};
+    const day = {id:d.id, chip:d.chip, title:d.title, focus:d.focus, ex:[]};
     d.ex.forEach((e,i)=>{
-      const o = e[p]; if(!o) return;
-      const pv = e.since && prev && prev.date<e.since ? null : prev;
-      const u = o.nk ? "" : unitFor(d.id,i,p,pv);
-      const sets = [];
-      for(let s=0;s<o.n;s++){ const v = getSet(d.id,p,i,s); sets.push(v ? {kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r, ok: !!v.ok} : null); }
-      const last = okSets(pv,i).map(v=>({kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r, u: v.u||"kg"}));
-      snap.ex.push({k:e.k, n:e.n, v:o.v||"", s:o.s, d:o.d, sets, last, nk:!!o.nk, mu:o.unit, u, rest:o.rest, hi:o.hi||0});
+      const x = {k:e.k, n:e.n};
+      P.forEach(p=>{
+        const o = e[p]; if(!o) return;
+        const pv = e.since && prev[p] && prev[p].date<e.since ? null : prev[p];
+        const sets = [];
+        for(let s=0;s<o.n;s++){ const v = getSet(d.id,p,i,s); sets.push(v ? {kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r, ok: !!v.ok} : null); }
+        const last = okSets(pv,i).map(v=>({kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r}));
+        x[p] = {v:o.v||"", s:o.s, d:o.d, t:(o.t||"").slice(0,240), nk:!!o.nk, mu:o.unit, u: o.nk ? "" : unitFor(d.id,i,p,pv), rest:o.rest, hi:o.hi||0, sets, last, ld: pv ? pv.date : ""};
+      });
+      day.ex.push(x);
     });
-  }
+    snap.days.push(day);
+  });
   return snap;
 }
 function pushWatch(force){
@@ -1731,6 +1734,7 @@ function applyWatchLog(l){
   const i = d.ex.findIndex(e=>e.k===l.k); if(i<0 || !d.ex[i][l.p]) return;
   const cur = getSet(l.day,l.p,i,l.s);
   if(cur && cur.at && l.at && cur.at > l.at) return;
+  if(l.u && !d.ex[i][l.p].nk && l.u!==unitFor(l.day,i,l.p)) saveUnit(l.day,i,l.p,l.u);
   saveSet(l.day,l.p,i,l.s,{kg: l.kg==null?null:l.kg, r: l.r==null?null:l.r, u: unitFor(l.day,i,l.p), ok: !!l.ok, at: l.at||Date.now(), src:"relogio"});
 }
 window.onWatchLog = js=>{ try{ applyWatchLog(JSON.parse(js)); }catch(e){} };
