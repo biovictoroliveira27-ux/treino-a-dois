@@ -15,6 +15,11 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.content.SharedPreferences;
+import com.google.android.gms.wearable.MessageClient;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.Wearable;
+import java.nio.charset.StandardCharsets;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -50,6 +55,8 @@ public class MainActivity extends Activity {
             "https://appassets.androidplatform.net/assets/index.html";
 
     static volatile boolean foreground = false;
+    static volatile boolean alive = false;
+    private MessageClient.OnMessageReceivedListener watchListener;
     private WebView web;
     private CredentialManager credentials;
     private Executor mainExecutor;
@@ -91,6 +98,13 @@ public class MainActivity extends Activity {
             }
         });
         RestReceiver.ensureChannel(this);
+        alive = true;
+        // Mensagens do relógio: séries marcadas e pedidos de atualização
+        watchListener = ev -> {
+            if ("/spotter/log".equals(ev.getPath())) callJs("onWatchLog", new String(ev.getData(), StandardCharsets.UTF_8));
+            else if ("/spotter/refresh".equals(ev.getPath())) callJs("onWatchRefresh", "");
+        };
+        try { Wearable.getMessageClient(this).addListener(watchListener); } catch (Exception ignored) { }
         web.addJavascriptInterface(new Bridge(), "AndroidApp");
         setContentView(web);
 
@@ -156,7 +170,18 @@ public class MainActivity extends Activity {
         public void cancelRest(String who) { runOnUiThread(() -> MainActivity.this.cancelRest(who)); }
 
         @JavascriptInterface
-        public String version() { return "4.0"; }
+        public void pushWatch(String json) { runOnUiThread(() -> MainActivity.this.pushWatch(json)); }
+
+        @JavascriptInterface
+        public String takeWatchQueue() {
+            SharedPreferences p = getSharedPreferences(WatchListenerService.PREFS, MODE_PRIVATE);
+            String q = p.getString("queue", "[]");
+            p.edit().remove("queue").apply();
+            return q;
+        }
+
+        @JavascriptInterface
+        public String version() { return "4.3"; }
     }
 
     @Override
@@ -204,6 +229,24 @@ public class MainActivity extends Activity {
     protected void onPause() {
         foreground = false;
         super.onPause();
+    }
+
+    // Envia o treino do dia para o relógio
+    private void pushWatch(String json) {
+        try {
+            PutDataMapRequest r = PutDataMapRequest.create("/spotter/today");
+            r.getDataMap().putString("json", json);
+            r.getDataMap().putLong("t", System.currentTimeMillis());
+            Wearable.getDataClient(this).putDataItem(r.asPutDataRequest().setUrgent())
+                    .addOnFailureListener(e -> { });
+        } catch (Exception ignored) { }
+    }
+
+    @Override
+    protected void onDestroy() {
+        alive = false;
+        try { if (watchListener != null) Wearable.getMessageClient(this).removeListener(watchListener); } catch (Exception ignored) { }
+        super.onDestroy();
     }
 
     private boolean isNight() {

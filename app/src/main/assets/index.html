@@ -775,6 +775,7 @@ function startApp(){
   applyPlanFrom(docs);
   mode(store.get("mode") || profile.role);
   gate("app");
+  setTimeout(processWatchQueue, 800);
   if(unsub) unsub();
   let first = true;
   unsub = fdb.collection("couples").doc(coupleCode).collection("sessions").orderBy("date","desc").limit(600)
@@ -1054,7 +1055,7 @@ function buildViews(){
   document.getElementById("main").innerHTML = homeView + planView + aquecer + DAYS.map(dayView).join("") + cardio + histView + logica;
 }
 
-function refresh(){ DAYS.forEach(syncDay); renderHist(); renderHome(); renderPlan(); }
+function refresh(){ DAYS.forEach(syncDay); renderHist(); renderHome(); renderPlan(); pushWatch(); }
 
 /* ---------- Navegação ---------- */
 const dowNow = new Date().getDay();
@@ -1690,6 +1691,57 @@ document.addEventListener("click", e=>{
   const nb = t.closest("[data-note]"); if(nb){ openNote(nb.dataset.note); return; }
   const ns = t.closest("[data-note-save]"); if(ns){ noteSet(ns.dataset.noteSave, val("note-text").trim().slice(0,300)); closeSheet(); toast("Anotação salva"); return; }
 });
+
+/* ---------- v5: sincronização com o relógio (Galaxy Watch) ---------- */
+let lastWatchKey = "", watchT = null;
+function watchSnapshot(){
+  const p = (profile && profile.role) || myRole();
+  const d = todayDay;
+  const snap = {v:1, date:TODAY, role:p, updatedAt:Date.now(), day:null, ex:[]};
+  if(d){
+    snap.day = {id:d.id, title:d.title, focus:d.focus};
+    const prev = prevSession(d.id,p);
+    d.ex.forEach((e,i)=>{
+      const o = e[p]; if(!o) return;
+      const pv = e.since && prev && prev.date<e.since ? null : prev;
+      const u = o.nk ? "" : unitFor(d.id,i,p,pv);
+      const sets = [];
+      for(let s=0;s<o.n;s++){ const v = getSet(d.id,p,i,s); sets.push(v ? {kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r, ok: !!v.ok} : null); }
+      const last = okSets(pv,i).map(v=>({kg: v.kg==null?null:v.kg, r: v.r==null?null:v.r, u: v.u||"kg"}));
+      snap.ex.push({k:e.k, n:e.n, v:o.v||"", s:o.s, d:o.d, sets, last, nk:!!o.nk, mu:o.unit, u, rest:o.rest, hi:o.hi||0});
+    });
+  }
+  return snap;
+}
+function pushWatch(force){
+  if(!(window.AndroidApp && AndroidApp.pushWatch) || !me || !profile) return;
+  clearTimeout(watchT);
+  watchT = setTimeout(()=>{
+    const s = watchSnapshot();
+    const key = JSON.stringify({...s, updatedAt:0});
+    if(!force && key===lastWatchKey) return;
+    lastWatchKey = key;
+    try{ AndroidApp.pushWatch(JSON.stringify(s)); }catch(e){}
+  }, force ? 50 : 600);
+}
+window.onWatchRefresh = ()=>pushWatch(true);
+function applyWatchLog(l){
+  if(!l || !l.day || l.date!==TODAY) return;
+  const d = dayById(l.day); if(!d) return;
+  const i = d.ex.findIndex(e=>e.k===l.k); if(i<0 || !d.ex[i][l.p]) return;
+  const cur = getSet(l.day,l.p,i,l.s);
+  if(cur && cur.at && l.at && cur.at > l.at) return;
+  saveSet(l.day,l.p,i,l.s,{kg: l.kg==null?null:l.kg, r: l.r==null?null:l.r, u: unitFor(l.day,i,l.p), ok: !!l.ok, at: l.at||Date.now(), src:"relogio"});
+}
+window.onWatchLog = js=>{ try{ applyWatchLog(JSON.parse(js)); }catch(e){} };
+function processWatchQueue(){
+  try{
+    if(!(window.AndroidApp && AndroidApp.takeWatchQueue)) return;
+    const arr = JSON.parse(AndroidApp.takeWatchQueue() || "[]");
+    arr.sort((a,b)=>(a.at||0)-(b.at||0)).forEach(applyWatchLog);
+  }catch(e){}
+  pushWatch(true);
+}
 
 /* ---------- Início ---------- */
 buildViews();

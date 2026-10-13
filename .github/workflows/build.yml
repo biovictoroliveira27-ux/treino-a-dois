@@ -60,7 +60,7 @@ jobs:
           }
 
       - name: Renomear
-        run: cp app/build/outputs/apk/release/app-release.apk TreinoADois.apk && cp TreinoADois.apk Spotter.apk
+        run: cp app/build/outputs/apk/release/app-release.apk TreinoADois.apk && cp TreinoADois.apk Spotter.apk && cp wear/build/outputs/apk/release/wear-release.apk SpotterWatch.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -75,3 +75,4 @@ jobs:
           files: |
             TreinoADois.apk
             Spotter.apk
+            SpotterWatch.apk

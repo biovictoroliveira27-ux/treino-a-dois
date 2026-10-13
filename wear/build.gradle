@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+def signing = new Properties()
+def signingFile = rootProject.file('keystore/signing.properties')
+if (signingFile.exists()) signing.load(new FileInputStream(signingFile))
+
+android {
+    namespace 'com.treinoadois.wear'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.treinoadois.app"
+        minSdk 30
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('keystore/treino.jks')
+            storePassword signing['storePassword']
+            keyAlias signing['keyAlias']
+            keyPassword signing['keyPassword']
+        }
+    }
+
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.release }
+        debug { signingConfig signingConfigs.release }
+    }
+
+    lint { checkReleaseBuilds false; abortOnError false }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-wearable:18.2.0'
+}
