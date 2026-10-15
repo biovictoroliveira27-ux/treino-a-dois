@@ -1,6 +1,7 @@
 // Gera o vídeo MP4 a partir de hiv-cd4.html (quadro a quadro, 30 fps).
-// Uso: node render.mjs [saida.mp4]            -> vídeo completo
-//      node render.mjs --stills 1,4.2,10 dir  -> apenas quadros de teste (PNG)
+// Uso: node render.mjs [--src arquivo.html] [saida.mp4]            -> vídeo completo
+//      node render.mjs [--src arquivo.html] --stills 1,4.2,10 dir  -> apenas quadros de teste (PNG)
+// Padrão: hiv-cd4.html (16:9). Versão Instagram: --src hiv-cd4-vertical.html
 import { createRequire } from 'node:module';
 import { spawn, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -13,13 +14,17 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(execSync('npm root -g').toString().trim(), 'playwright')); }
 const { chromium } = pw;
-const FPS = 30, DUR = 20;
+const FPS = 30;
 const args = process.argv.slice(2);
+let src = 'hiv-cd4.html';
+const si = args.indexOf('--src');
+if (si >= 0) { src = args[si + 1]; args.splice(si, 2); }
 
 const browser = await chromium.launch(fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {});
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-await page.goto('file://' + path.join(here, 'hiv-cd4.html') + '?render=1');
+const page = await browser.newPage({ viewport: { width: 1280, height: 1280 } });
+await page.goto('file://' + path.resolve(here, src) + '?render=1');
 await page.evaluate(() => document.fonts.ready);
+const DUR = await page.evaluate(() => DUR);
 const frame = (t, type = 'image/jpeg') => page.evaluate(([t, type]) => { render(t); return document.getElementById('c').toDataURL(type, 0.95).split(',')[1]; }, [t, type]);
 
 if (args[0] === '--stills') {
@@ -27,7 +32,7 @@ if (args[0] === '--stills') {
   fs.mkdirSync(dir, { recursive: true });
   for (const t of args[1].split(',').map(Number)) fs.writeFileSync(path.join(dir, `still_${t.toFixed(2)}.png`), Buffer.from(await frame(t, 'image/png'), 'base64'));
 } else {
-  const out = args[0] || path.join(here, 'hiv-cd4.mp4');
+  const out = args[0] || path.join(here, path.basename(src, '.html') + '.mp4');
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out], { stdio: ['pipe', 'inherit', 'inherit'] });
   for (let i = 0; i < FPS * DUR; i++) {

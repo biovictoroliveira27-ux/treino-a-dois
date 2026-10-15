@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HIV em linfócito T CD4 (vertical)</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Animação vertical (9:16, 30 s): infecção de um linfócito T CD4+ pelo HIV-1 e ciclo de replicação.
+// A cena usa a linha do tempo da versão 16:9 (0–20 s) "esticada" por warp(); a câmera é girada 90°.
+// render(t) é determinística — usada tanto para tocar no navegador quanto para gerar o vídeo.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 720, H = 1280, SC = cv.width / W, DUR = 30;
+const TAU = Math.PI * 2;
+const FONT = 'Inter, "DejaVu Sans", Arial, sans-serif';
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const ss = (a, b, t) => { const x = clamp((t - a) / (b - a)); return x * x * (3 - 2 * x); };
+const win = (t, a, b, f = 0.25) => Math.min(ss(a, a + f, t), 1 - ss(b - f, b, t));
+const deg = d => d * Math.PI / 180;
+const polar = (c, r, a) => ({ x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) });
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- paleta ----------
+const COL = {
+  gp120: '#ffd166', gp41: '#c3cbd8', cd4: '#4ea8ff', ccr5: '#43d39e',
+  capsid: '#f4a259', rna: '#ff4d6d', dna: '#c77dff', host: '#7fb0e6',
+  rt: '#5eead4', in: '#a3e635', pr: '#f472b6', ma: '#93c5fd', nc: '#fb7185',
+  head: '#f3e3b3', tail: 'rgba(214,170,100,.55)', escrt: '#a78bfa'
+};
+
+// ---------- mundo ----------
+const C = { x: 820, y: 400 }, R = 470, RV = 46;          // célula e raio do vírion
+const N = { x: 930, y: 400 }, RN = 170;                  // núcleo
+const PORES = [180, 215, 150, 250, 290, 330, 15, 60, 105].map(deg);
+const TH_CD4 = Math.PI - 0.055, TH_CCR5 = Math.PI + 0.06;
+const TH_BUD = deg(215);
+const BUD_SITE = polar(C, R, TH_BUD);
+const PORE_IN = polar(N, RN, Math.PI), PORE_OUT = polar(N, RN, deg(215));
+const EXTRA_BUDS = [[232, 15.5], [250, 15.9], [196, 16.4], [182, 16.9], [266, 17.4]];
+const DECOR_RECEPTORS = [128, 137, 153, 168, 190, 205, 224, 241, 258, 268];
+
+// partículas estáticas
+const R0 = rng(7);
+const PARTICLES = Array.from({ length: 160 }, () => ({ x: -300 + R0() * 1900, y: -300 + R0() * 1300, r: 0.6 + R0() * 1.8, a: 0.15 + R0() * 0.35 }));
+const CYTO = Array.from({ length: 260 }, () => { const a = R0() * TAU, r = Math.sqrt(R0()) * (R - 20); return { x: C.x + r * Math.cos(a), y: C.y + r * Math.sin(a), r: 0.8 + R0() * 2.2, a: 0.08 + R0() * 0.2 }; }).filter(p => dist(p, N) > RN + 8);
+const CHROM = Array.from({ length: 14 }, () => { const a = R0() * TAU, r = R0() * (RN - 40); return { x: N.x + r * Math.cos(a), y: N.y + r * Math.sin(a), ph: R0() * TAU, len: 30 + R0() * 50, ang: R0() * TAU }; });
+const RNA_TANGLE = (() => { const r = rng(11); const pts = []; let x = 0, y = 0, a = 0; for (let i = 0; i < 46; i++) { a += (r() - .5) * 1.6; x += Math.cos(a) * 3; y += Math.sin(a) * 3; const d = Math.hypot(x, y); if (d > 13) { x *= 13 / d; y *= 13 / d; a += Math.PI * .7; } pts.push([x, y]); } return pts; })();
+
+// ---------- câmera ----------
+const CAM = [[0, 150, 392, 2.6], [2.7, 200, 395, 2.5], [3.6, 285, 400, 2.3], [5.0, 300, 398, 2.3], [6.6, 395, 398, 2.15],
+  [7.0, 420, 400, 2.2], [9.6, 740, 405, 2.2], [10.3, 850, 420, 2.1], [11.9, 865, 420, 2.1], [12.6, 840, 380, 1.75],
+  [13.6, 700, 300, 1.55], [14.6, 510, 195, 1.9], [15.1, 440, 140, 2.2], [16.9, 385, 110, 2.2], [17.8, 360, 95, 2.1], [18.3, 352, 88, 2.0],
+  [18.8, 690, 300, 0.76], [20, 700, 300, 0.72]];
+function camAt(t) {
+  for (let i = 0; i < CAM.length - 1; i++) {
+    const a = CAM[i], b = CAM[i + 1];
+    if (t <= b[0]) { const k = ss(a[0], b[0], t); return { x: lerp(a[1], b[1], k), y: lerp(a[2], b[2], k), z: Math.exp(lerp(Math.log(a[3]), Math.log(b[3]), k)) }; }
+  }
+  const l = CAM[CAM.length - 1]; return { x: l[1], y: l[2], z: l[3] };
+}
+let cam = camAt(0), OY = 590;
+// rotação de 90°: o eixo x do mundo (de fora da célula → núcleo) aponta para baixo na tela
+const toScreen = p => ({ x: W / 2 - (p.y - cam.y) * cam.z, y: OY + (p.x - cam.x) * cam.z });
+const worldT = () => ctx.setTransform(0, SC * cam.z, -SC * cam.z, 0, SC * (W / 2 + cam.y * cam.z), SC * (OY - cam.x * cam.z));
+// altura do centro da cena: sobe quando há uma lupa de detalhe na parte de baixo
+const oyAt = T => 575 - 165 * Math.max(win(T, 8.4, 14.2, .6), win(T, 21.1, 27.7, .6)) + 95 * ss(27.3, 28.6, T);
+const WARP = [[0, 0], [3.5, 3], [6, 5], [8.5, 7], [14, 9.6], [17, 12], [20.5, 14.8], [25, 17.1], [27.5, 18.8], [30, 20]];
+function warp(T) { for (let i = 0; i < WARP.length - 1; i++) { const a = WARP[i], b = WARP[i + 1]; if (T <= b[0]) return lerp(a[1], b[1], (T - a[0]) / (b[0] - a[0])); } return 20; }
+let TT = 0;
+const screenT = () => ctx.setTransform(SC, 0, 0, SC, 0, 0);
+
+// ---------- utilitários de desenho ----------
+function bilayer(cx, cy, r, hidden, o = {}) {
+  const sp = o.sp || 6.2, n = Math.max(14, Math.round(TAU * r / sp)), h = o.h || 4.2, hr = o.hr || 2.05;
+  const tails = new Path2D(), heads = new Path2D();
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU, c = Math.cos(a), s = Math.sin(a);
+    if (hidden && hidden(cx + r * c, cy + r * s)) continue;
+    const xi = cx + (r - h) * c, yi = cy + (r - h) * s, xo = cx + (r + h) * c, yo = cy + (r + h) * s;
+    tails.moveTo(xi, yi); tails.lineTo(cx + (r - .5) * c, cy + (r - .5) * s);
+    tails.moveTo(cx + (r + .5) * c, cy + (r + .5) * s); tails.lineTo(xo, yo);
+    heads.moveTo(xi + hr, yi); heads.arc(xi, yi, hr, 0, TAU);
+    heads.moveTo(xo + hr, yo); heads.arc(xo, yo, hr, 0, TAU);
+  }
+  ctx.strokeStyle = o.tail || COL.tail; ctx.lineWidth = o.tw || 1.5; ctx.stroke(tails);
+  ctx.fillStyle = o.head || COL.head; ctx.fill(heads);
+}
+function blob(x, y, r, col, a = 1) {
+  if (a <= 0) return;
+  const ga = ctx.globalAlpha; ctx.globalAlpha = ga * a;
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(.35, col); g.addColorStop(1, shade(col, -40));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  ctx.globalAlpha = ga;
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = clamp((n >> 16) + amt, 0, 255), g = clamp((n >> 8 & 255) + amt, 0, 255), b = clamp((n & 255) + amt, 0, 255);
+  return `rgb(${r},${g},${b})`;
+}
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; }
+function glow(x, y, r, col, a) {
+  if (a <= 0) return;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, rgba(col, .75 * a)); g.addColorStop(1, rgba(col, 0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+}
+function helix(x0, x1, y, amp, ph, colA, colB, rung, lw = 1.6) {
+  if (x1 <= x0) return;
+  ctx.strokeStyle = rung; ctx.lineWidth = .9; ctx.beginPath();
+  for (let x = Math.ceil(x0 / 3.2) * 3.2; x <= x1; x += 3.2) { const a = Math.sin(x * .2 + ph) * amp; ctx.moveTo(x, y + a); ctx.lineTo(x, y - a); }
+  ctx.stroke();
+  const n = Math.max(2, Math.ceil((x1 - x0) / 1.5));
+  for (const [sg, col] of [[1, colA], [-1, colB]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
+    for (let i = 0; i <= n; i++) { const x = lerp(x0, x1, i / n), yy = y + sg * Math.sin(x * .2 + ph) * amp; i ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); }
+    ctx.stroke();
+  }
+}
+function polyAt(pts, k) {
+  const seg = []; let tot = 0;
+  for (let i = 0; i < pts.length - 1; i++) { const d = dist(pts[i], pts[i + 1]); seg.push(d); tot += d; }
+  let L = clamp(k) * tot;
+  for (let i = 0; i < seg.length; i++) {
+    if (L <= seg[i] || i === seg.length - 1) {
+      const u = seg[i] ? clamp(L / seg[i]) : 0, a = pts[i], b = pts[i + 1];
+      return { x: lerp(a.x, b.x, u), y: lerp(a.y, b.y, u), a: Math.atan2(b.y - a.y, b.x - a.x) };
+    }
+    L -= seg[i];
+  }
+}
+function squiggle(x, y, a, len, col, lw, ph, amp = 1.8, cap = false, alpha = 1) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.rotate(a);
+  ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let i = 0; i <= 24; i++) { const u = -len + len * i / 24; const yy = Math.sin(u * .45 + ph) * amp; i ? ctx.lineTo(u, yy) : ctx.moveTo(u, yy); }
+  ctx.stroke();
+  if (cap) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, Math.sin(ph) * amp, lw * 1.1, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+
+// ---------- receptores ----------
+function cd4(th, tip, a = 1, hl = 0) {
+  const n = { x: Math.cos(th), y: Math.sin(th) }, b = polar(C, R, th);
+  tip = tip || { x: b.x + n.x * 44, y: b.y + n.y * 44 };
+  const cp = { x: b.x + n.x * 26, y: b.y + n.y * 26 };
+  ctx.save(); ctx.globalAlpha *= a;
+  glow((b.x + tip.x) / 2, (b.y + tip.y) / 2, 34, COL.cd4, hl);
+  ctx.strokeStyle = shade(COL.cd4, -30); ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(b.x - n.x * 14, b.y - n.y * 14); ctx.lineTo(b.x + n.x * 4, b.y + n.y * 4); ctx.stroke(); // TM + cauda
+  const q = u => ({ x: (1 - u) * (1 - u) * (b.x + n.x * 6) + 2 * (1 - u) * u * cp.x + u * u * tip.x, y: (1 - u) * (1 - u) * (b.y + n.y * 6) + 2 * (1 - u) * u * cp.y + u * u * tip.y });
+  for (let i = 0; i < 4; i++) {
+    const u = (i + .55) / 4, p = q(u), p2 = q(u + .02), ang = Math.atan2(p2.y - p.y, p2.x - p.x);
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang);
+    const g = ctx.createLinearGradient(0, -5, 0, 5); g.addColorStop(0, '#bfe0ff'); g.addColorStop(1, COL.cd4);
+    ctx.fillStyle = g; ctx.strokeStyle = shade(COL.cd4, -50); ctx.lineWidth = .8;
+    ctx.beginPath(); ctx.ellipse(0, 0, 5.6, 4.4, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  ctx.restore();
+}
+function ccr5(th, a = 1, hl = 0) {
+  const n = { x: Math.cos(th), y: Math.sin(th) }, tg = { x: -n.y, y: n.x }, b = polar(C, R, th);
+  ctx.save(); ctx.globalAlpha *= a;
+  glow(b.x, b.y, 26, COL.ccr5, hl);
+  ctx.strokeStyle = COL.ccr5; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= 7; i++) {
+    const s = (i - 3.5) * 3.2, out = i % 2 === 0 ? 9 : -8;
+    const p = { x: b.x + tg.x * s + n.x * out, y: b.y + tg.y * s + n.y * out };
+    if (i === 0) ctx.moveTo(b.x + tg.x * (s - 2) + n.x * 12, b.y + tg.y * (s - 2) + n.y * 12);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+// ---------- vírion / capsídeo ----------
+const CAPSID = (() => { const p = new Path2D(); p.moveTo(24, -6.5); p.quadraticCurveTo(31, 0, 24, 6.5); p.lineTo(-20, 17); p.quadraticCurveTo(-34, 0, -20, -17); p.closePath(); return p; })();
+const hw = x => lerp(17, 6.5, clamp((x + 20) / 44));
+function capsid(x, y, rot, o = {}) {
+  const a = o.alpha ?? 1; if (a <= 0) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha *= a;
+  const s = o.scale ?? 1; ctx.scale(s, s);
+  const g = ctx.createLinearGradient(0, -17, 0, 17);
+  g.addColorStop(0, rgba(COL.capsid, .55)); g.addColorStop(.5, rgba(COL.capsid, .28)); g.addColorStop(1, rgba(COL.capsid, .55));
+  ctx.fillStyle = g; ctx.fill(CAPSID);
+  ctx.save(); ctx.clip(CAPSID);
+  ctx.strokeStyle = rgba(COL.capsid, .8); ctx.lineWidth = .55; ctx.beginPath();
+  for (let j = -5; j <= 5; j++) for (let i = -9; i <= 8; i++) {
+    const cx = i * 4.6 + (j & 1) * 2.3, cy = j * 4;
+    for (let k = 0; k <= 6; k++) { const an = k * TAU / 6 + Math.PI / 6, px = cx + 2.55 * Math.cos(an), py = cy + 2.55 * Math.sin(an); k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+  }
+  ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = COL.capsid; ctx.lineWidth = 1.4; ctx.stroke(CAPSID);
+  // genoma
+  const rt = o.rt || 0, ph = o.ph || 0;
+  const strand = (off, x0, x1, col, lw) => {
+    if (x1 <= x0) return;
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath();
+    for (let i = 0; i <= 30; i++) { const xx = lerp(x0, x1, i / 30); const yy = off * hw(xx) * .4 + 1.5 * Math.sin(xx * .7 + ph + off); i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+    ctx.stroke();
+  };
+  const rnaA = 1 - ss(.55, 1, rt);
+  ctx.globalAlpha *= 1;
+  ctx.save(); ctx.globalAlpha *= rnaA; strand(-1, -24, 21, COL.rna, 1.3); strand(1, -24, 21, COL.rna, 1.3); ctx.restore();
+  if (rt > 0) {
+    strand(-.55, -24, lerp(-24, 21, ss(0, .6, rt)), COL.dna, 1.3);
+    strand(-.15, -24, lerp(-24, 21, ss(.55, 1, rt)), COL.dna, 1.3);
+  }
+  if (o.enz !== false) {
+    blob(-8, 9, 2.7, COL.rt); blob(6 + 10 * Math.sin(rt * Math.PI) * (rt > 0 ? 1 : 0), -7, 2.7, COL.rt);
+    blob(3, 9, 2.4, COL.in); blob(13, 3.5, 2.4, COL.in);
+    blob(-15, -8, 2.2, COL.pr);
+  }
+  ctx.restore();
+}
+const outsideCellClip = () => { const p = new Path2D(); p.rect(-5000, -5000, 10000, 10000); p.moveTo(C.x + R, C.y); p.arc(C.x, C.y, R, 0, TAU); ctx.clip(p, 'evenodd'); };
+const inCell = (x, y) => Math.hypot(x - C.x, y - C.y) < R;
+function spikeAt(v, k) { const a = v.rot + k * TAU / v.nSp; return { a, base: polar(v, RV, a), tip: polar(v, RV + 14, a) }; }
+function nearestSpike(v, ang) { let best = 0, bd = 9; for (let k = 0; k < v.nSp; k++) { let d = Math.abs(((v.rot + k * TAU / v.nSp - ang) % TAU + TAU + Math.PI) % TAU - Math.PI); if (d < bd) { bd = d; best = k; } } return spikeAt(v, best); }
+function drawVirion(v) {
+  const asm = v.asm ?? 1, mat = v.mature ?? 1, al = v.alpha ?? 1;
+  ctx.save(); ctx.globalAlpha *= al;
+  // interior (apenas fora da célula)
+  ctx.save(); outsideCellClip();
+  const g = ctx.createRadialGradient(v.x - 14, v.y - 14, 4, v.x, v.y, RV);
+  g.addColorStop(0, 'rgba(58,78,128,.9)'); g.addColorStop(1, 'rgba(22,30,62,.95)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(v.x, v.y, RV, 0, TAU); ctx.fill();
+  if (mat > 0) { // matriz p17
+    ctx.fillStyle = rgba(COL.ma, .9 * mat);
+    for (let k = 0; k < 40; k++) { const p = polar(v, RV - 7.5, v.rot + k * TAU / 40); ctx.beginPath(); ctx.arc(p.x, p.y, 1.7, 0, TAU); ctx.fill(); }
+  }
+  ctx.restore();
+  // Gag imaturo (raios MA–CA–NC) e RNA central
+  if (mat < 1 && asm > 0) {
+    const ga = 1 - mat, n = 34, out = { x: Math.cos(v.dirOut ?? v.rot), y: Math.sin(v.dirOut ?? v.rot) };
+    const baseA = Math.atan2(out.y, out.x);
+    for (let k = 0; k < n; k++) {
+      const a = baseA + (k / n - .5) * TAU, rel = Math.abs(k / n - .5) * 2; // 0 = topo do broto
+      if (1 - rel > asm * 1.02) continue;
+      const seg = (r0, r1, col, lw) => { const p0 = polar(v, r0, a), p1 = polar(v, r1, a); ctx.strokeStyle = rgba(col, ga); ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke(); };
+      ctx.lineCap = 'round';
+      seg(RV - 5.5, RV - 9.5, COL.ma, 3.2); seg(RV - 10.5, RV - 17, COL.capsid, 3.6); seg(RV - 18, RV - 21.5, COL.nc, 2.6);
+    }
+    ctx.save(); ctx.globalAlpha *= ga * asm; ctx.translate(v.x, v.y); ctx.rotate(v.rot);
+    ctx.strokeStyle = COL.rna; ctx.lineWidth = 1.2; ctx.beginPath(); RNA_TANGLE.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    ctx.rotate(2.1); ctx.beginPath(); RNA_TANGLE.forEach(([x, y], i) => i ? ctx.lineTo(x * .8, y * .8) : ctx.moveTo(x * .8, y * .8)); ctx.stroke();
+    ctx.restore();
+  }
+  // envelope lipídico
+  bilayer(v.x, v.y, RV, inCell, { sp: 5.6, h: 3.6, hr: 1.75 });
+  // espículas gp41/gp120
+  for (let k = 0; k < v.nSp; k++) {
+    const s = spikeAt(v, k);
+    if (inCell(s.base.x, s.base.y)) continue;
+    const sa = v.spikeA ? v.spikeA(k) : 1; if (sa <= 0) continue;
+    const c = Math.cos(s.a), si = Math.sin(s.a), b0 = polar(v, RV - 3, s.a), b1 = polar(v, RV + 9, s.a);
+    ctx.save(); ctx.globalAlpha *= sa;
+    ctx.strokeStyle = COL.gp41; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.stroke();
+    for (const [u, w] of [[2.2, -3], [2.2, 3], [5.6, 0]]) blob(b1.x + c * u - si * w, b1.y + si * u + c * w, 3.1, COL.gp120);
+    ctx.restore();
+  }
+  // capsídeo cônico maduro
+  if (mat > 0 && v.capsid !== false) capsid(v.x, v.y, v.rot + (v.capRot || 0), { alpha: mat, rt: 0, scale: lerp(.6, 1, mat) });
+  ctx.restore();
+}
+
+// ---------- estado da entrada do vírus ----------
+const PA = { x: 249.7, y: 404.9 }, PB = { x: 286, y: 389.5 }, PF = { x: 400, y: 392 };
+function entryVirus(t) {
+  let x, y;
+  if (t < 3) { x = lerp(80, 200, ss(0, 3, t)); y = 398 + 6 * Math.sin(t * 2); }
+  else if (t < 3.9) { const k = ss(3, 3.9, t); x = lerp(200, PA.x, k); y = lerp(398 + 6 * Math.sin(6), PA.y, k); }
+  else if (t < 4.4) { x = PA.x; y = PA.y; }
+  else if (t < 5.5) { const k = ss(4.4, 5.0, t); x = lerp(PA.x, PB.x, k); y = lerp(PA.y, PB.y, k); }
+  else { const k = ss(5.5, 6.8, t); x = lerp(PB.x, PF.x, k); y = lerp(PB.y, PF.y, k); }
+  return { x, y, rot: Math.PI / 10 + 0.9 * (1 - ss(0, 3.9, t)), nSp: 10 };
+}
+const CAP_PATH = [PF, { x: 705, y: 403 }, { x: 731, y: 400 }];
+function budState(th, t0, t) {
+  const asm = ss(t0, t0 + .6, t), rise = ss(t0 + .45, t0 + 1.8, t), det = ss(t0 + 1.8, t0 + 2.1, t);
+  const drift = Math.max(0, t - (t0 + 2.1));
+  const d = lerp(-RV + 5, RV - 1, rise) + 13 * det + 26 * drift;
+  const p = polar(C, R + d, th);
+  return { x: p.x, y: p.y, rot: th + .25 * drift, dirOut: th, asm, mature: 1 - ss(t0 + 2.4, t0 + 3.4, t), mat: ss(t0 + 2.4, t0 + 3.4, t), escrt: win(t, t0 + 1.25, t0 + 2.05, .2), nSp: 9, vis: t > t0, rise, det };
+}
+
+// ---------- célula ----------
+function drawCell(t, holes) {
+  // citoplasma
+  const g = ctx.createRadialGradient(C.x - 120, C.y - 80, 40, C.x, C.y, R);
+  g.addColorStop(0, '#1d4058'); g.addColorStop(.75, '#16314a'); g.addColorStop(1, '#122a40');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(C.x, C.y, R, 0, TAU); ctx.fill();
+  for (const p of CYTO) { ctx.fillStyle = `rgba(160,210,230,${p.a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); }
+  // mitocôndrias
+  for (const [x, y, a] of [[620, 600, .5], [1080, 680, -.3], [560, 480, 1.9], [1150, 210, .9]]) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.fillStyle = 'rgba(232,121,95,.45)'; ctx.strokeStyle = 'rgba(255,160,130,.8)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(0, 0, 30, 13, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,190,160,.7)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = -22; i <= 22; i += 6) { ctx.moveTo(i, -10); ctx.lineTo(i + 2, 3); }
+    ctx.stroke(); ctx.restore();
+  }
+  // centrossomo + microtúbulos
+  const MT = { x: 722, y: 418 };
+  ctx.lineCap = 'round';
+  for (const [ex, ey] of [[372, 408], [430, 150], [600, 860], [380, 600], [540, 70], [1000, 830], [700, 30]]) {
+    ctx.strokeStyle = 'rgba(120,230,190,.20)'; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(MT.x, MT.y); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,240,200,.35)'; ctx.lineWidth = 1; ctx.setLineDash([2.5, 1.5]); ctx.beginPath(); ctx.moveTo(MT.x, MT.y); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.fillStyle = 'rgba(150,240,200,.8)';
+  ctx.save(); ctx.translate(MT.x, MT.y); ctx.fillRect(-6, -2.5, 12, 5); ctx.rotate(Math.PI / 2); ctx.fillRect(2, -2.5, 12, 5); ctx.restore();
+  // retículo endoplasmático rugoso
+  for (const r of [204, 222, 240]) {
+    ctx.strokeStyle = 'rgba(110,170,215,.32)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(N.x, N.y, r, deg(188), deg(252)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,200,240,.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(N.x, N.y, r - 4, deg(188), deg(252)); ctx.stroke(); ctx.beginPath(); ctx.arc(N.x, N.y, r + 4, deg(188), deg(252)); ctx.stroke();
+    ctx.fillStyle = 'rgba(235,235,245,.85)';
+    for (let a = 190; a <= 250; a += 3.4) { const p = polar(N, r + 6.5, deg(a)); ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, TAU); ctx.fill(); }
+  }
+  // complexo de Golgi
+  for (let i = 0; i < 4; i++) {
+    const r = 38 + i * 8;
+    ctx.strokeStyle = 'rgba(240,150,200,.55)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(652, 232, r, deg(198 - i * 2), deg(252 + i * 2)); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(240,170,210,.7)';
+  for (const [x, y] of [[588, 205], [600, 176], [575, 232], [628, 158]]) { ctx.beginPath(); ctx.arc(x, y, 3, 0, TAU); ctx.fill(); }
+  // núcleo
+  const gn = ctx.createRadialGradient(N.x - 50, N.y - 50, 20, N.x, N.y, RN);
+  gn.addColorStop(0, '#3a2c66'); gn.addColorStop(1, '#271d4a');
+  ctx.fillStyle = gn; ctx.beginPath(); ctx.arc(N.x, N.y, RN, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(90,60,140,.55)'; ctx.beginPath(); ctx.ellipse(1010, 335, 34, 26, .4, 0, TAU); ctx.fill(); // nucléolo
+  ctx.save(); ctx.beginPath(); ctx.arc(N.x, N.y, RN - 6, 0, TAU); ctx.clip();
+  for (const c of CHROM) squiggle(c.x, c.y, c.ang, c.len, 'rgba(150,170,230,.22)', 2.2, c.ph, 3);
+  ctx.restore();
+  // envelope nuclear (dupla membrana com poros)
+  for (const r of [RN, RN + 7]) {
+    ctx.strokeStyle = 'rgba(190,160,255,.75)'; ctx.lineWidth = 2;
+    let start = 0;
+    const gaps = PORES.map(a => [a - .045, a + .045]).sort((a, b) => a[0] - b[0]);
+    ctx.beginPath();
+    let prev = gaps[gaps.length - 1][1] - TAU;
+    for (const [a0, a1] of gaps) { ctx.moveTo(N.x + r * Math.cos(prev), N.y + r * Math.sin(prev)); ctx.arc(N.x, N.y, r, prev, a0); prev = a1; }
+    ctx.stroke();
+  }
+  for (const a of PORES) { // complexo do poro
+    for (const s of [-1, 1]) { const p = polar(N, RN + 3.5, a + s * .052); blob(p.x, p.y, 3.2, '#d8b4fe'); }
+  }
+  // membrana plasmática
+  bilayer(C.x, C.y, R, (x, y) => holes.some(h => Math.hypot(x - h.x, y - h.y) < RV), { sp: 6.4 });
+}
+
+// ---------- rótulos / HUD ----------
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const LABELS = [];
+function label(text, wp, a, dx, dy, col = '#e6edf7') { if (a > 0.01 && wp) LABELS.push({ text, wp, a, dx, dy, col }); }
+function drawLabels() {
+  screenT();
+  for (const L of LABELS) {
+    const s = toScreen(L.wp);
+    ctx.globalAlpha = L.a;
+    ctx.font = `600 16px ${FONT}`;
+    const w = ctx.measureText(L.text).width + 18, h = 28;
+    // deslocamentos girados junto com a cena e mantidos na área segura do Reels
+    const inn = (a, b) => TT > a && TT < b;
+    const maxY = inn(8.6, 14.1) || inn(21.3, 25.4) ? 520 : inn(25.1, 27.6) ? 565 : 850;
+    const tx = clamp(s.x - L.dy, 16 + w / 2, W - 84 - w / 2), ty = clamp(s.y + L.dx, 290, maxY);
+    const bx = tx - w / 2, by = ty - h / 2;
+    const ex = clamp(s.x, bx, bx + w), ey = clamp(s.y, by, by + h);
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(8,14,28,.85)'; rr(bx, by, w, h, 8); ctx.fill();
+    ctx.strokeStyle = L.col; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.fillStyle = L.col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(L.text, tx, ty + .5);
+  }
+  ctx.globalAlpha = 1;
+}
+const STAGES = [
+  { t: 0, n: 0, title: 'HIV-1 × linfócito T CD4⁺', sub: 'O HIV-1 é um retrovírus envelopado: 2 cópias de RNA (+) e as enzimas transcriptase reversa, integrase e protease' },
+  { t: 3.5, n: 1, title: 'Ligação', sub: 'A gp120 liga-se ao CD4, muda de conformação e então se liga ao correceptor CCR5 (ou CXCR4)' },
+  { t: 6.0, n: 2, title: 'Fusão', sub: 'A gp41 insere o peptídeo de fusão na membrana e se dobra (feixe de 6 hélices), fundindo o envelope à célula' },
+  { t: 8.5, n: 3, title: 'Transcrição reversa', sub: 'Dentro do capsídeo, a transcriptase reversa copia o RNA viral em DNA dupla fita enquanto segue pelos microtúbulos até o núcleo' },
+  { t: 14.0, n: 4, title: 'Integração', sub: 'O complexo atravessa o poro nuclear e a integrase insere o DNA viral no cromossomo: o provírus' },
+  { t: 17.0, n: 5, title: 'Transcrição e tradução', sub: 'A RNA pol II transcreve o provírus; os mRNAs saem do núcleo e os ribossomos produzem Gag, Gag-Pol e Env' },
+  { t: 20.5, n: 6, title: 'Montagem e brotamento', sub: 'Gag se reúne na membrana com o RNA genômico e gp120/gp41; a maquinaria ESCRT corta o colo e libera o vírion' },
+  { t: 25.0, n: 7, title: 'Maturação', sub: 'Já fora da célula, a protease cliva Gag e Gag-Pol: o capsídeo cônico se forma e o vírion torna-se infeccioso' },
+  { t: 27.5, n: 8, title: 'Novos vírions', sub: 'Cada célula infectada libera milhares de vírions; a perda progressiva de linfócitos T CD4⁺ leva à AIDS' },
+];
+function wrap(text, maxW) { const words = text.split(' '), lines = []; let cur = ''; for (const w of words) { const tst = cur ? cur + ' ' + w : w; if (ctx.measureText(tst).width > maxW && cur) { lines.push(cur); cur = w; } else cur = tst; } lines.push(cur); return lines; }
+function drawHUD(T) {
+  screenT();
+  let si = 0; for (let i = 0; i < STAGES.length; i++) if (T >= STAGES[i].t) si = i;
+  const st = STAGES[si], next = STAGES[si + 1];
+  const fin = ss(st.t, st.t + .35, T) * (next ? 1 - ss(next.t - .2, next.t, T) : 1);
+  // título da etapa
+  ctx.globalAlpha = fin; ctx.textBaseline = 'middle';
+  const num = st.n >= 1 && st.n <= 7;
+  ctx.font = `800 30px ${FONT}`;
+  const tw = ctx.measureText(st.title).width, bw = tw + (num ? 84 : 40), bx = W / 2 - bw / 2;
+  ctx.fillStyle = 'rgba(6,12,26,.82)'; rr(bx, 128, bw, 60, 16); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.stroke();
+  let tx = bx + 20;
+  if (num) {
+    ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(bx + 36, 158, 17, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = `800 19px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText(st.n, bx + 36, 159);
+    tx = bx + 64; ctx.font = `800 30px ${FONT}`;
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(st.title, tx, 159);
+  // legenda (acima da área inferior do Reels)
+  ctx.font = `500 20px ${FONT}`;
+  const lines = wrap(st.sub, 590), lh = 28, boxH = lines.length * lh + 22;
+  const mw = Math.max(...lines.map(l => ctx.measureText(l).width)) + 40, by = 1000 - boxH;
+  ctx.fillStyle = 'rgba(6,12,26,.84)'; rr(W / 2 - mw / 2, by, mw, boxH, 14); ctx.fill();
+  ctx.fillStyle = '#e8eef8'; ctx.textAlign = 'center';
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, by + 11 + lh / 2 + i * lh + 1));
+  ctx.globalAlpha = 1;
+  // etapas 1–7
+  const x0 = 165, x1 = 555, y = 228;
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+  const prog = clamp((T - 3.5) / (27.5 - 3.5));
+  ctx.strokeStyle = '#ff4d6d'; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(lerp(x0, x1, prog), y); ctx.stroke();
+  ctx.font = `800 11px ${FONT}`; ctx.textAlign = 'center';
+  for (let i = 0; i < 7; i++) {
+    const x = lerp(x0, x1, i / 6), on = st.n === i + 1, done = st.n > i + 1;
+    ctx.fillStyle = on ? '#ff4d6d' : done ? '#ff9fb1' : '#2a3448';
+    ctx.beginPath(); ctx.arc(x, y, on ? 11 : 8.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = on || done ? '#fff' : 'rgba(255,255,255,.55)'; ctx.fillText(i + 1, x, y + .5);
+  }
+}
+
+// ---------- lupas de detalhe ----------
+const INS = { x: 360, y: 715, r: 162 };
+function insetFrame(a, title, caption, ring, link) {
+  screenT(); ctx.globalAlpha = a;
+  const { x: cx, y: cy, r } = INS;
+  if (link) { ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.4; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(link.x, link.y); ctx.lineTo(cx, cy - r); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fillStyle = 'rgba(8,14,30,.94)'; ctx.fill();
+  ctx.save(); ctx.clip(); ctx.translate(cx, cy);
+  return () => {
+    ctx.restore(); ctx.globalAlpha = a;
+    ctx.strokeStyle = ring; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 15px ${FONT}`; let w = ctx.measureText(title).width + 24;
+    ctx.fillStyle = 'rgba(6,12,26,.92)'; rr(cx - w / 2, cy - r - 14, w, 28, 9); ctx.fill(); ctx.strokeStyle = ring; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = ring; ctx.fillText(title, cx, cy - r);
+    ctx.font = `700 15px ${FONT}`; w = ctx.measureText(caption).width + 24;
+    ctx.fillStyle = 'rgba(6,12,26,.92)'; rr(cx - w / 2, cy + r - 14, w, 28, 9); ctx.fill();
+    ctx.fillStyle = '#f1f5f9'; ctx.fillText(caption, cx, cy + r);
+    ctx.globalAlpha = 1;
+  };
+}
+const tinyLabel = (txt, x, y, col, size = 12) => { ctx.font = `700 ${size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(txt, x, y); };
+const BASES = ['#ff6b6b', '#ffd166', '#4ecdc4', '#a78bfa'];
+const SEQ = (() => { const r = rng(3); return Array.from({ length: 44 }, () => Math.floor(r() * 4)); })();
+function rtHand(x, y, s = 1) {
+  ctx.fillStyle = rgba(COL.rt, .88); ctx.strokeStyle = '#ccfbf1'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(x, y, 24 * s, deg(-60), deg(240)); ctx.arc(x, y, 14 * s, deg(240), deg(-60), true); ctx.closePath(); ctx.fill(); ctx.stroke();
+  tinyLabel('TR', x, y + 19 * s, '#04201c', 13);
+}
+// transcrição reversa detalhada
+function drawRTInset(T, capS) {
+  const a = win(T, 8.6, 14.1, .4); if (a <= 0) return;
+  const p1 = ss(8.8, 9.5, T), k1 = ss(9.6, 10.9, T), kd = ss(10.9, 11.6, T), k2 = ss(11.7, 12.9, T), kl = ss(12.9, 13.4, T);
+  const cap = kl > 0 ? 'DNA viral dupla fita com LTRs nas pontas' : k2 > 0 ? 'O PPT serve de primer: síntese da fita (+)'
+    : kd > 0 ? 'RNase H degrada o RNA (o PPT resiste)' : k1 > 0 ? 'A TR sintetiza a fita de DNA (–)' : 'O tRNA-Lys3 se liga ao PBS (primer)';
+  const done = insetFrame(a, 'Transcriptase reversa', cap, COL.rt, capS);
+  const n = 42, sp = 7, xL = -n * sp / 2, yT = -22, yB = 8, PBS = [2, 8], PPT = [27, 31];
+  const xs = i => xL + i * sp;
+  // RNA molde
+  for (let i = 0; i < n; i++) {
+    const isPPT = i >= PPT[0] && i <= PPT[1];
+    const gone = isPPT ? 0 : kd * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.7)));
+    const al = clamp(1 - gone * 1.4) * (1 - (isPPT ? ss(12.4, 12.9, T) : 0));
+    if (al <= 0) continue;
+    const yy = yT - (isPPT ? 0 : 16 * kd * Math.abs(Math.sin(i * 2.3)));
+    ctx.globalAlpha = a * al;
+    ctx.strokeStyle = isPPT && kd > 0 ? '#fde047' : COL.rna; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(xs(i), yy); ctx.lineTo(xs(i) + sp, yy); ctx.stroke();
+    ctx.strokeStyle = BASES[SEQ[i]]; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(xs(i) + 3.5, yy); ctx.lineTo(xs(i) + 3.5, yy + 10); ctx.stroke();
+  }
+  ctx.globalAlpha = a;
+  ctx.globalAlpha = a * (1 - ss(10.9, 11.2, T)); tinyLabel('RNA viral (+)', 0, yT - 32, COL.rna, 15); ctx.globalAlpha = a;
+  if (kd > .3 && k2 < .6) tinyLabel('PPT', (xs(PPT[0]) + xs(PPT[1] + 1)) / 2, yT - 15, '#fde047', 14);
+  // tRNA-Lys3 (primer) no PBS
+  const tA = 1 - ss(10.4, 10.9, T);
+  if (p1 > 0 && tA > 0) {
+    ctx.save(); ctx.globalAlpha = a * tA;
+    const px = (xs(PBS[0]) + xs(PBS[1] + 1)) / 2, py = lerp(yB + 60, yB, p1);
+    ctx.strokeStyle = '#f0abfc'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(xs(PBS[0]), py); ctx.lineTo(xs(PBS[1] + 1), py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + 20); ctx.stroke();
+    for (const [dx, dy] of [[-11, 30], [11, 30], [0, 42]]) { ctx.beginPath(); ctx.arc(px + dx, py + dy, 7, 0, TAU); ctx.stroke(); }
+    tinyLabel('tRNA-Lys3', px + 14, py + 64, '#f0abfc', 14);
+    ctx.restore();
+  }
+  // fita (–) de DNA
+  const st1 = PBS[1] + 1, end1 = lerp(xs(st1), xs(n), k1);
+  for (let i = 0; i < n; i++) {
+    const x = xs(i);
+    const inPBS = i >= PBS[0] && i <= PBS[1];
+    if (inPBS ? T < 10.4 : (x + sp > end1 + .1 || i < st1)) continue;
+    ctx.strokeStyle = COL.dna; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(x, yB); ctx.lineTo(x + sp, yB); ctx.stroke();
+    ctx.strokeStyle = BASES[3 - SEQ[i]]; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(x + 3.5, yB); ctx.lineTo(x + 3.5, yB - 10); ctx.stroke();
+  }
+  if (k1 > 0) tinyLabel('DNA (–)', 0, yB + 24, COL.dna, 15);
+  // fita (+) de DNA
+  const end2 = lerp(xL, xs(n), k2), y2 = yT + 2;
+  for (let i = 0; i < n; i++) {
+    const x = xs(i); if (k2 <= 0 || x + sp > end2 + .1) break;
+    ctx.strokeStyle = COL.dna; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(x, y2); ctx.lineTo(x + sp, y2); ctx.stroke();
+    ctx.strokeStyle = BASES[SEQ[i]]; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(x + 3.5, y2); ctx.lineTo(x + 3.5, y2 + 10); ctx.stroke();
+  }
+  if (k2 > .6) tinyLabel('DNA (+)', 0, yT - 32, COL.dna, 15);
+  // LTRs
+  if (kl > 0) {
+    ctx.globalAlpha = a * kl; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
+    for (const x0 of [xL - 3, xs(n - 6) - 3]) { rr(x0, yT - 8, 6 * sp + 6, yB - yT + 16, 6); ctx.stroke(); tinyLabel('LTR', x0 + 3 * sp + 3, yB + 26, '#fbbf24', 14); }
+    tinyLabel('A TR não corrige erros:', 0, 66, '#cbd5e1', 14); tinyLabel('alta taxa de mutação', 0, 86, '#cbd5e1', 14);
+    ctx.globalAlpha = a;
+  }
+  // a enzima
+  let ex = null;
+  if (k1 > 0 && k1 < 1) ex = end1; else if (k2 > 0 && k2 < 1) ex = end2; else if (kd > 0 && kd < 1) ex = lerp(xs(n), xL + 30, kd);
+  else if (p1 > .8 && k1 === 0) ex = xs(st1);
+  if (ex !== null) { rtHand(ex, (yT + yB) / 2 + 2); if (kd > 0 && kd < 1) tinyLabel('RNase H', ex, yT - 52, '#fef08a', 15); }
+  done();
+}
+// brotamento: o colo e a maquinaria ESCRT
+function drawBudInset(T) {
+  const a = win(T, 21.3, 25.4, .4); if (a <= 0) return;
+  const pA = ss(21.5, 22.3, T), pB = ss(22.4, 23.5, T), pC = win(T, 23.5, 24.6, .25), sc = ss(24.3, 25.0, T);
+  const nw = T < 22.4 ? 30 : T < 23.6 ? lerp(30, 9, ss(22.4, 23.6, T)) : lerp(9, 0, ss(23.6, 24.3, T));
+  const cap = sc > .02 ? 'Cisão: vírion imaturo liberado' : T > 23.5 ? 'VPS4 remodela o ESCRT-III e o colo se fecha'
+    : T > 22.4 ? 'ESCRT-III (CHMP4) forma espirais e estreita o colo' : 'Domínio p6 da Gag recruta TSG101 e ALIX';
+  const done = insetFrame(a, 'Colo do broto · ESCRT', cap, COL.escrt, null);
+  const yM = 78, BC = { x: 0, y: -40 - 46 * sc }, R2 = 62;
+  const f0 = Math.asin(clamp(nw / R2, 0, 1)), yb = BC.y + R2 * Math.cos(f0);
+  const mem = new Path2D();
+  if (sc < .02) {
+    mem.moveTo(-200, yM); mem.lineTo(-nw - 12, yM); mem.quadraticCurveTo(-nw, yM, -nw, yM - 12); mem.lineTo(-nw, yb);
+    mem.arc(BC.x, BC.y, R2, Math.PI / 2 + f0, Math.PI / 2 - f0 + TAU);
+    mem.lineTo(nw, yM - 12); mem.quadraticCurveTo(nw, yM, nw + 12, yM); mem.lineTo(200, yM);
+  } else { mem.moveTo(-200, yM); mem.lineTo(200, yM); mem.moveTo(BC.x + R2, BC.y); mem.arc(BC.x, BC.y, R2, 0, TAU); }
+  // citoplasma (célula + interior do broto)
+  ctx.fillStyle = '#16364f';
+  if (sc < .02) { const cy = new Path2D(mem); cy.lineTo(200, 220); cy.lineTo(-200, 220); cy.closePath(); ctx.fill(cy); }
+  else { ctx.fillRect(-200, yM, 400, 200); ctx.fillStyle = 'rgba(40,58,105,.95)'; ctx.beginPath(); ctx.arc(BC.x, BC.y, R2, 0, TAU); ctx.fill(); }
+  tinyLabel('extracelular', -108, -10, 'rgba(255,255,255,.5)', 13);
+  tinyLabel('citoplasma', 0, 128, 'rgba(255,255,255,.55)', 13);
+  // Gag (MA–CA–NC) sob a membrana do broto + RNA
+  for (let k = 0; k < 30; k++) {
+    const an = -Math.PI / 2 + (k / 30 - .5) * TAU * .86;
+    const seg = (r0, r1, col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(BC.x + r0 * Math.cos(an), BC.y + r0 * Math.sin(an)); ctx.lineTo(BC.x + r1 * Math.cos(an), BC.y + r1 * Math.sin(an)); ctx.stroke(); };
+    ctx.lineCap = 'round'; seg(R2 - 8, R2 - 14, COL.ma, 4); seg(R2 - 15, R2 - 25, COL.capsid, 4.5); seg(R2 - 26, R2 - 31, COL.nc, 3.5);
+  }
+  ctx.save(); ctx.translate(BC.x, BC.y); ctx.scale(1.3, 1.3); ctx.strokeStyle = COL.rna; ctx.lineWidth = 1.2; ctx.beginPath(); RNA_TANGLE.forEach(([x, y], i) => i ? ctx.lineTo(x * .9, y * .9) : ctx.moveTo(x * .9, y * .9)); ctx.stroke(); ctx.restore();
+  // membrana (bicamada) + espículas
+  ctx.lineJoin = 'round'; ctx.strokeStyle = COL.head; ctx.lineWidth = 12; ctx.stroke(mem);
+  ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 4; ctx.stroke(mem);
+  for (let k = 0; k < 7; k++) {
+    const an = -Math.PI / 2 + (k - 3) * .62, c = Math.cos(an), s = Math.sin(an);
+    const b0 = { x: BC.x + (R2 + 5) * c, y: BC.y + (R2 + 5) * s }, b1 = { x: BC.x + (R2 + 18) * c, y: BC.y + (R2 + 18) * s };
+    ctx.strokeStyle = COL.gp41; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.stroke();
+    for (const [u, w] of [[3, -4], [3, 4], [8, 0]]) blob(b1.x + c * u - s * w, b1.y + s * u + c * w, 4, COL.gp120);
+  }
+  if (sc < .02) {
+    // p6 + TSG101 (ESCRT-I) + ALIX
+    const nY = yM - 18;
+    for (const sx of [-1, 1]) blob(sx * Math.max(nw - 6, 2), yb + 6, 3.4, '#c4b5fd');
+    const tsA = 1 - ss(23.3, 23.8, T);
+    blob(lerp(-60, -Math.max(nw - 9, 3), pA), lerp(150, nY, pA), 9, '#fb923c', tsA);
+    blob(lerp(70, Math.max(nw - 9, 3), pA), lerp(150, nY + 8, pA), 8, '#bef264', tsA);
+    if (pA > .5 && T < 22.9) { ctx.globalAlpha = a * win(T, 21.9, 22.9, .2); tinyLabel('TSG101', -72, nY + 4, '#fb923c', 15); tinyLabel('ALIX', 66, nY + 12, '#bef264', 15); tinyLabel('p6', 0, yb - 14, '#c4b5fd', 14); ctx.globalAlpha = a; }
+    // ESCRT-III em espiral
+    const eA = 1 - ss(23.9, 24.3, T), nr = Math.round(6 * pB);
+    for (let i = 0; i < nr; i++) {
+      const yy = yM - 10 - i * 6.5, ww = Math.max(nw - 3 - i * .4, 1.5);
+      ctx.strokeStyle = rgba(COL.escrt, eA); ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, yy, ww, 3, 0, 0, TAU); ctx.stroke();
+    }
+    if (pB > .3 && T < 23.6) { ctx.globalAlpha = a * win(T, 22.7, 23.6, .2); tinyLabel('ESCRT-III', 82, yM - 30, COL.escrt, 15); ctx.globalAlpha = a; }
+    // VPS4
+    if (pC > 0) {
+      const vy = lerp(140, yM + 22, ss(23.5, 23.9, T));
+      for (let k = 0; k < 6; k++) blob(Math.cos(k * TAU / 6 + T * 3) * 9, vy + Math.sin(k * TAU / 6 + T * 3) * 9, 4.6, '#2dd4bf', pC);
+      ctx.globalAlpha = a * pC; tinyLabel('VPS4', 52, vy + 2, '#2dd4bf', 15); ctx.globalAlpha = a;
+    }
+  }
+  done();
+}
+// maturação: cortes da protease na Gag
+function drawGagInset(T) {
+  const a = win(T, 25.1, 27.6, .35); if (a <= 0) return;
+  screenT(); ctx.globalAlpha = a;
+  const x0 = 40, y0 = 600, w = 640, h = 230;
+  ctx.fillStyle = 'rgba(8,14,30,.94)'; rr(x0, y0, w, h, 18); ctx.fill(); ctx.strokeStyle = COL.pr; ctx.lineWidth = 2.5; ctx.stroke();
+  tinyLabel('Protease (PR) cliva a poliproteína Gag', W / 2, y0 + 28, COL.pr, 17);
+  const SEG = [['MA', 132, COL.ma], ['CA', 231, COL.capsid], ['SP1', 14, '#94a3b8'], ['NC', 55, COL.nc], ['SP2', 16, '#94a3b8'], ['p6', 52, '#c4b5fd']];
+  // cortes na ordem: SP1|NC, depois MA|CA e SP2|p6, por último CA|SP1 e NC|SP2
+  const cutT = [25.85, 26.15, 25.5, 26.15, 25.85];
+  const scale = 560 / 500, gap = 14;
+  let x = 80, y = y0 + 90;
+  ctx.textBaseline = 'middle';
+  SEG.forEach(([name, len, col], i) => {
+    let off = 0; for (let j = 0; j < i; j++) off += gap * ss(cutT[j], cutT[j] + .3, T);
+    const sx = x + off - gap * 1.6 * ss(25.5, 26.5, T), sw = len * scale;
+    ctx.fillStyle = col; rr(sx, y - 14, sw, 28, 6); ctx.fill();
+    if (len > 40) tinyLabel(name, sx + sw / 2, y + .5, '#0b1220', 14);
+    else tinyLabel(name, sx + sw / 2, y + 30, '#94a3b8', 10.5);
+    x += sw;
+    if (i < SEG.length - 1) {
+      const fl = win(T, cutT[i] - .15, cutT[i] + .25, .1);
+      if (fl > 0) { ctx.globalAlpha = a * fl; tinyLabel('✂', sx + sw + gap * .5 * ss(cutT[i], cutT[i] + .3, T), y - 32, COL.pr, 22); ctx.globalAlpha = a; }
+    }
+  });
+  const l1 = ss(26.3, 26.6, T), l2 = ss(26.6, 26.9, T);
+  ctx.globalAlpha = a * l1; tinyLabel('CA → capsídeo cônico (~250 hexâmeros + 12 pentâmeros)', W / 2, y0 + 168, COL.capsid, 15);
+  ctx.globalAlpha = a * l2; tinyLabel('NC condensa o RNA · MA fica sob a membrana', W / 2, y0 + 198, '#cbd5e1', 14);
+  ctx.globalAlpha = 1;
+}
+function drawInsets(T, capS) { drawRTInset(T, capS); drawBudInset(T); drawGagInset(T); }
+
+// ---------- quadro ----------
+const RIBS = [206, 214, 222, 230, 238, 246].map(a => polar(N, 246, deg(a)));
+const MRNA_KIND = ['gag', 'gagpol', 'env', 'gag', 'gagpol', 'env'];
+const NUC_PATH = [{ x: 900, y: 436 }, { x: 870, y: 380 }, { x: 812, y: 322 }, PORE_OUT];
+const BUD_TGT = polar(C, R - 16, TH_BUD);
+function chain(x, y, ang, n, kind, curl, a = 1) {
+  const cols = kind === 'env' ? Array(10).fill(COL.gp120)
+    : kind === 'gagpol' ? [COL.ma, COL.ma, COL.capsid, COL.capsid, COL.nc, COL.pr, COL.rt, COL.rt, COL.rt, COL.in]
+      : [COL.ma, COL.ma, COL.ma, COL.capsid, COL.capsid, COL.capsid, COL.capsid, COL.nc, COL.nc, COL.nc];
+  let px = x, py = y, aa = ang;
+  for (let i = 0; i < n; i++) { blob(px, py, 2.4, cols[i % cols.length], a); aa += curl; px += Math.cos(aa) * 4.2; py += Math.sin(aa) * 4.2; }
+}
+
+function renderCore(t, T) {
+  TT = T; cam = camAt(t); OY = oyAt(T); LABELS.length = 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // fundo extracelular
+  screenT();
+  const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#081530'); bg.addColorStop(1, '#040a18');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  worldT();
+  for (const p of PARTICLES) { if (inCell(p.x, p.y)) continue; ctx.fillStyle = `rgba(140,180,255,${p.a})`; ctx.beginPath(); ctx.arc(p.x + 4 * Math.sin(t * .6 + p.y), p.y + 4 * Math.cos(t * .5 + p.x), p.r, 0, TAU); ctx.fill(); }
+
+  // estados
+  const v = entryVirus(t);
+  const buds = [{ ...budState(TH_BUD, 14.9, t), main: true }, ...EXTRA_BUDS.map(([a, t0]) => budState(deg(a), t0, t))].filter(b => b.vis);
+  const holes = [...buds];
+  if (t > 5.3 && t < 7) holes.push(v);
+
+  drawCell(t, holes);
+
+  // DNA do hospedeiro + provírus
+  const kInt = ss(10.8, 11.7, t), gap = 70 * kInt;
+  ctx.save(); ctx.beginPath(); ctx.arc(N.x, N.y, RN - 3, 0, TAU); ctx.clip();
+  helix(770 - gap / 2, 900 - gap / 2, 440, 5, 0, COL.host, shade(COL.host, -40), 'rgba(127,176,230,.45)');
+  helix(900 + gap / 2, 1100 + gap / 2, 440, 5, 0, COL.host, shade(COL.host, -40), 'rgba(127,176,230,.45)');
+  ctx.restore();
+
+  // receptores
+  const allHoles = h => holes.some(o => dist(o, h) < RV + 6);
+  for (const a of DECOR_RECEPTORS) { const th = deg(a); if (allHoles(polar(C, R, th)) || allHoles(polar(C, R, th + deg(5)))) continue; cd4(th, null, .9); ccr5(th + deg(5), .9); }
+  const bound1 = t >= 3.9, bound2 = t >= 5.0;
+  const recA = 1 - ss(6.6, 7.2, t);
+  const tip0 = bound1 && t < 7.2 ? spikeAt(v, 0).tip : null;
+  cd4(TH_CD4, tip0 && t < 6.2 ? polar(tip0, 0, 0) : null, recA, win(t, 3.75, 5.2, .3));
+  ccr5(TH_CCR5, recA, win(t, 4.75, 6.0, .3));
+
+  // gp41 — peptídeo de fusão
+  const hk = win(t, 5.0, 6.3, .3);
+  if (hk > 0) {
+    for (const k of [0, 9, 1, 8]) {
+      const s = spikeAt(v, k), m = polar(C, R + 4, Math.atan2(s.base.y - C.y, s.base.x - C.x));
+      const e = { x: lerp(s.tip.x, m.x, ss(5.0, 5.4, t)), y: lerp(s.tip.y, m.y, ss(5.0, 5.4, t)) };
+      ctx.strokeStyle = rgba('#ff8fab', hk); ctx.lineWidth = 2; ctx.setLineDash([3, 2]);
+      ctx.beginPath(); ctx.moveTo(s.base.x, s.base.y); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]);
+      glow(e.x, e.y, 9, '#ff8fab', hk);
+    }
+  }
+
+  // vírion de entrada
+  if (t < 7.2) {
+    drawVirion({ ...v, capsid: false });
+    if (t < 6.8) capsid(v.x, v.y, v.rot + 0.4 * (1 - ss(0, 3.9, t)) - 0, { alpha: 1, ph: t });
+    if (bound1) { const tp = spikeAt(v, 0).tip; glow(tp.x, tp.y, 16, COL.cd4, win(t, 3.85, 5.2, .3)); }
+    if (bound2) { const tp = spikeAt(v, 9).tip; glow(tp.x, tp.y, 16, COL.ccr5, win(t, 4.85, 6.0, .3)); }
+  }
+
+  // capsídeo livre → poro nuclear
+  let capPos = null;
+  if (t >= 6.8 && t < 10.4) {
+    const k = ss(6.8, 9.6, t), p = polyAt(CAP_PATH, k);
+    const rot = lerp(v.rot + 0.0, 0, ss(6.8, 7.6, t));
+    const ua = 1 - ss(9.8, 10.3, t);
+    capsid(p.x, p.y, rot, { alpha: ua, rt: ss(9.6, 13.0, T), ph: t * 2 });
+    capPos = p;
+    // fragmentos do capsídeo no desnudamento
+    if (t > 9.8) {
+      const f = ss(9.8, 10.4, t), rr0 = rng(5);
+      for (let i = 0; i < 9; i++) {
+        const an = rr0() * TAU, d = 8 + 26 * f * (0.6 + rr0());
+        const q = { x: p.x - 6 + Math.cos(an) * d, y: p.y + Math.sin(an) * d };
+        ctx.save(); ctx.globalAlpha = 1 - f; ctx.translate(q.x, q.y); ctx.rotate(an + f * 3);
+        ctx.strokeStyle = COL.capsid; ctx.lineWidth = 1; ctx.beginPath();
+        for (let j = 0; j <= 6; j++) { const aa = j * TAU / 6; j ? ctx.lineTo(3 * Math.cos(aa), 3 * Math.sin(aa)) : ctx.moveTo(3, 0); }
+        ctx.stroke(); ctx.restore();
+      }
+    }
+  }
+  // complexo de pré-integração → integração
+  let picPos = null;
+  if (t >= 9.8) {
+    const kp = ss(9.9, 10.8, t);
+    const p = kInt > 0 ? { x: 900, y: lerp(426, 440, kInt) } : polyAt([{ x: 738, y: 400 }, PORE_IN, { x: 820, y: 415 }, { x: 900, y: 426 }], kp);
+    const L = lerp(40, 70, kInt) + 0.001, amp = lerp(3.5, 5, kInt);
+    const a0 = ss(9.8, 10.1, t);
+    ctx.save(); ctx.globalAlpha = a0;
+    if (kInt <= 0) { ctx.translate(p.x, p.y); ctx.rotate(Math.sin(t * 3) * .12); ctx.translate(-p.x, -p.y); }
+    helix(p.x - L / 2, p.x + L / 2, p.y, amp, 0, COL.dna, shade(COL.dna, -50), 'rgba(199,125,255,.6)', 1.8);
+    const ia = 1 - ss(11.8, 12.3, t);
+    blob(p.x - L / 2 - 2, p.y, 4, COL.in, ia); blob(p.x + L / 2 + 2, p.y, 4, COL.in, ia);
+    blob(p.x - L / 2 + 2, p.y - 5, 3.2, COL.in, ia); blob(p.x + L / 2 - 2, p.y + 5, 3.2, COL.in, ia);
+    ctx.restore();
+    picPos = p;
+  }
+  // transcrição
+  const polA = win(t, 12.0, 13.4, .2);
+  const polX = 865 + 70 * (((t - 12) / .6) % 1 + 1) % 1;
+  if (polA > 0) {
+    squiggle(polX - 2, 432, -2.2, 14, COL.rna, 1.4, t * 8, 1.3, false, polA);
+    ctx.save(); ctx.globalAlpha = polA;
+    const g = ctx.createRadialGradient(polX - 3, 436, 1, polX, 440, 11); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#94a3b8');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(polX, 440, 11, 8, 0, 0, TAU); ctx.fill(); ctx.restore();
+  }
+  // mRNAs, ribossomos e cadeias de poliproteínas
+  for (let i = 0; i < 6; i++) {
+    const s0 = 12.1 + .2 * i, k = ss(s0, s0 + 1.3, t);
+    if (t < s0) continue;
+    const path = [...NUC_PATH, { x: 760, y: 282 }, RIBS[i]];
+    const p = polyAt(path, k);
+    const fade = 1 - ss(14.2, 14.7, t);
+    squiggle(p.x, p.y, p.a, 18, COL.rna, 1.6, t * 6 + i, 1.6, true, ss(s0, s0 + .15, t) * fade);
+    if (k >= 1) {
+      blob(RIBS[i].x, RIBS[i].y, 4.5, '#e5e7eb', fade); blob(RIBS[i].x + 3, RIBS[i].y - 3, 3.2, '#cbd5e1', fade);
+      const g = ss(s0 + 1.3, s0 + 2.0, t), out = Math.atan2(RIBS[i].y - N.y, RIBS[i].x - N.x);
+      const tr = ss(14.0 + .08 * i, 14.9 + .05 * i, t);
+      const kind = MRNA_KIND[i];
+      if (kind !== 'env') {
+        const tgt = polar(BUD_TGT, 6 + i * 2, i * 1.3);
+        const cx = lerp(RIBS[i].x, tgt.x, tr), cy = lerp(RIBS[i].y, tgt.y, tr);
+        chain(cx, cy, out, Math.round(10 * g), kind, .35 + tr * .3, 1 - ss(15.0, 15.4, t));
+      } else {
+        const vA = ss(13.9, 14.1, t);
+        if (t < 14.1) chain(RIBS[i].x, RIBS[i].y, out, Math.round(10 * g), kind, .3, 1 - vA);
+        else {
+          const vp = polyAt([RIBS[i], { x: 612, y: 192 }, polar(C, R - 10, TH_BUD + (i === 2 ? .05 : -.05))], ss(14.1, 15.0, t));
+          const va = 1 - ss(15.0, 15.25, t);
+          ctx.save(); ctx.globalAlpha = va;
+          bilayer(vp.x, vp.y, 7, null, { sp: 3.4, h: 2, hr: 1.1, tw: 1 });
+          blob(vp.x + 7, vp.y - 3, 2.4, COL.gp120); blob(vp.x - 6, vp.y + 4, 2.4, COL.gp120);
+          ctx.restore();
+        }
+      }
+    }
+  }
+  // RNA genômico (não processado) → membrana
+  for (let j = 0; j < 2; j++) {
+    const s0 = 13.4 + .15 * j; if (t < s0) continue;
+    const p = polyAt([...NUC_PATH, { x: 700, y: 240 }, { x: 560, y: 180 }, polar(BUD_TGT, 5, j * 2)], ss(s0, 15.0 + .1 * j, t));
+    squiggle(p.x, p.y, p.a, 26, COL.rna, 1.7, t * 5 + j, 2, true, ss(s0, s0 + .2, t) * (1 - ss(15.1, 15.4, t)));
+  }
+
+  // brotamento e novos vírions
+  for (const b of buds) {
+    const vv = { x: b.x, y: b.y, rot: b.rot, dirOut: b.dirOut + (b.rot - b.dirOut), asm: b.asm, mature: b.mat, nSp: b.nSp, capRot: 0 };
+    vv.dirOut = b.rot;
+    drawVirion(vv);
+    if (b.escrt > 0) {
+      const nk = polar(C, R + 1, b.dirOut);
+      ctx.save(); ctx.translate(nk.x, nk.y); ctx.rotate(b.dirOut + Math.PI / 2);
+      for (let i = 0; i < 4; i++) { ctx.strokeStyle = rgba(COL.escrt, b.escrt * (1 - i * .18)); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 0, 13 - i * 2.8 - 5 * b.det, 3.2, 0, 0, TAU); ctx.stroke(); }
+      ctx.restore();
+    }
+    if (b.main) {
+      // protease cortando Gag
+      const pk = win(t, 17.25, 18.2, .2);
+      if (pk > 0) {
+        const r5 = rng(9);
+        for (let i = 0; i < 7; i++) {
+          const an = b.rot + r5() * TAU, ph = (t * 2.2 + r5()) % 1, p = polar(b, RV - 16, an);
+          ctx.save(); ctx.globalAlpha = pk * Math.sin(ph * Math.PI); ctx.translate(p.x, p.y); ctx.rotate(an);
+          ctx.strokeStyle = COL.pr; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-3, -3); ctx.lineTo(3, 3); ctx.moveTo(-3, 3); ctx.lineTo(3, -3); ctx.stroke();
+          ctx.restore();
+          blob(p.x + 4, p.y + 4, 2.2, COL.pr, pk);
+        }
+      }
+    }
+  }
+
+  // ---------- rótulos ----------
+  const L1 = (a, b) => win(t, a, b, .25);
+  if (t < 3.1) {
+    const vs = { ...v };
+    label('gp120', nearestSpike(vs, -2.2).tip, L1(.3, 3.0), -150, -10, COL.gp120);
+    label('gp41', polar(nearestSpike(vs, -0.9).base, 4, nearestSpike(vs, -0.9).a), L1(.5, 3.0), 70, -80, COL.gp41);
+    label('Envelope lipídico', polar(v, RV, 2.45), L1(.7, 3.0), -130, 70, COL.head);
+    label('Matriz (p17)', polar(v, RV - 7.5, 1.55), L1(.9, 3.0), -30, 112, COL.ma);
+    label('Capsídeo (p24)', (() => { const r = v.rot + .4 * (1 - ss(0, 3.9, t)); return { x: v.x + Math.cos(r) * -18 - Math.sin(r) * -15, y: v.y + Math.sin(r) * -18 + Math.cos(r) * -15 }; })(), L1(1.1, 3.0), -40, -175, COL.capsid);
+    const cr = v.rot + .4 * (1 - ss(0, 3.9, t)), loc = (lx, ly) => ({ x: v.x + Math.cos(cr) * lx - Math.sin(cr) * ly, y: v.y + Math.sin(cr) * lx + Math.cos(cr) * ly });
+    label('RNA viral (2 cópias)', loc(10, -4), L1(1.3, 3.0), 175, -20, COL.rna);
+    label('Transcriptase reversa', loc(-8, 9), L1(1.5, 3.0), 120, 150, COL.rt);
+    label('Integrase', loc(13, 3.5), L1(1.7, 3.0), 200, 60, COL.in);
+    label('Protease', loc(-15, -8), L1(1.9, 3.0), -170, -10, COL.pr);
+  }
+  label('CD4', polar(C, R + 24, TH_CD4), L1(3.1, 5.0), 70, 105, COL.cd4);
+  label('Correceptor CCR5', polar(C, R + 6, TH_CCR5), L1(3.6, 5.6), 90, -120, COL.ccr5);
+  label('gp120 + CD4', spikeAt(v, 0).tip, L1(3.95, 4.9), -110, 95, COL.gp120);
+  label('gp41: peptídeo de fusão', polar(C, R + 4, Math.PI + 0.0), L1(5.15, 6.2), -230, -170, '#ff8fab');
+  label('Poro de fusão', polar(C, R, Math.PI + .01), L1(6.1, 6.95), -110, 80, '#ffffff');
+  if (capPos) label('Capsídeo no citoplasma', capPos, L1(6.85, 7.7), -40, -95, COL.capsid);
+  label('Microtúbulo', { x: 560, y: 412 }, L1(7.4, 8.6), 0, 95, '#86efac');
+  label('Poro nuclear', PORE_IN, L1(9.55, 10.5), -70, -105, '#d8b4fe');
+  if (capPos) label('Desnudamento', capPos, L1(9.85, 10.45), -60, 95, COL.capsid);
+  if (picPos) label('Integrase (IN)', { x: picPos.x + lerp(20, 35, kInt), y: picPos.y }, L1(10.25, 11.7), 70, -85, COL.in);
+  label('DNA cromossômico', { x: 1010, y: 444 }, L1(10.4, 12.0), 50, 90, COL.host);
+  label('Núcleo', { x: 960, y: 290 }, L1(10.0, 11.4), 40, -60, '#c4b5fd');
+  label('Provírus', { x: 900, y: 446 }, L1(11.45, 12.7), -60, 95, COL.dna);
+  label('RNA pol II', { x: polX, y: 436 }, L1(12.05, 13.0), 40, -90, '#e2e8f0');
+  label('mRNA viral', polyAt([...NUC_PATH, { x: 760, y: 282 }, RIBS[0]], ss(12.1, 13.4, t)), L1(12.5, 13.6), -110, 60, COL.rna);
+  label('Ribossomos / RE', RIBS[5], L1(13.25, 14.3), 90, -60, '#e5e7eb');
+  label('Gag e Gag-Pol', polar(RIBS[0], 12, Math.atan2(RIBS[0].y - N.y, RIBS[0].x - N.x)), L1(13.55, 14.6), -120, 40, COL.capsid);
+  label('Env (gp160) → Golgi', { x: 612, y: 192 }, L1(13.9, 14.9), -110, -70, COL.gp120);
+  const mb = buds.find(b => b.main);
+  if (mb) {
+    label('Gag (MA·CA·NC)', polar(mb, RV - 12, mb.rot + .9), L1(15.2, 16.2), 120, 30, COL.capsid);
+    label('gp120/gp41', polar(mb, RV + 12, mb.rot - .5), L1(15.6, 16.6), -130, -40, COL.gp120);
+    label('ESCRT', polar(C, R + 1, TH_BUD), L1(16.15, 17.0), 120, 40, COL.escrt);
+    label('RNA genômico', polar(mb, 0, 0), L1(15.6, 16.4), 130, -70, COL.rna);
+    label('Protease (PR)', polar(mb, RV - 16, mb.rot + 2.2), L1(17.25, 18.15), 120, 60, COL.pr);
+    label('Capsídeo cônico', mb, L1(17.95, 18.75), -120, -90, COL.capsid);
+    label('Vírion maduro', polar(mb, RV + 6, mb.rot - 1), L1(18.6, 19.9), -40, -70, '#ffffff');
+  }
+  label('Linfócito T CD4⁺', polar(C, R, deg(-20)), L1(18.8, 20.2), -150, -60, COL.cd4);
+
+  drawInsets(T, capPos ? toScreen(capPos) : null);
+  // faixas escuras para leitura do título e da legenda
+  screenT();
+  const tb = ctx.createLinearGradient(0, 0, 0, 290); tb.addColorStop(0, 'rgba(2,6,16,.75)'); tb.addColorStop(1, 'rgba(2,6,16,0)');
+  ctx.fillStyle = tb; ctx.fillRect(0, 0, W, 290);
+  const bb = ctx.createLinearGradient(0, 880, 0, H); bb.addColorStop(0, 'rgba(2,6,16,0)'); bb.addColorStop(1, 'rgba(2,6,16,.7)');
+  ctx.fillStyle = bb; ctx.fillRect(0, 880, W, H - 880);
+  // vinheta
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  // fade de entrada/saída
+  const fa = Math.max(1 - ss(0, .35, t), ss(19.65, 20, t));
+  drawLabels();
+  drawHUD(T);
+  if (fa > 0) { ctx.fillStyle = `rgba(0,0,0,${fa})`; ctx.fillRect(0, 0, W, H); }
+}
+function render(T) { T = clamp(T, 0, DUR - 1e-6); renderCore(warp(T), T); }
+window.render = render;
+
+// reprodução no navegador (desativada quando ?render=1, usado pelo gerador de vídeo)
+if (!/render=1/.test(location.search)) {
+  let t0 = null;
+  const loop = ts => { if (t0 === null) t0 = ts; render(((ts - t0) / 1000) % DUR); requestAnimationFrame(loop); };
+  document.fonts.ready.then(() => requestAnimationFrame(loop));
+} else render(0);
+</script>
+</body>
+</html>
