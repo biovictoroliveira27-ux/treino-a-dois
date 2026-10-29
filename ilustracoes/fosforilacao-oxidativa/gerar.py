@@ -1,210 +1,250 @@
-# Gera fosforilacao-oxidativa.svg (cadeia transportadora de elétrons + ATP sintase).
-# PNG: node render.mjs (Playwright) ou qualquer conversor SVG→PNG.
+# Gera fosforilacao-oxidativa.svg — versão didática (ensino médio):
+# cadeia respiratória simplificada + ATP sintase detalhada, com passos numerados.
+# PNG: node render.mjs
 import math, random, os
-random.seed(4)
-W, H = 1600, 900
-MT, MB = 340, 460            # membrana interna (topo/base)
+random.seed(7)
+W, H = 1600, 1000
+MT, MB = 370, 470                     # membrana interna (topo / base)
 out = []
 A = out.append
-F = "font-family='Inter, DejaVu Sans, Arial, sans-serif'"
+FONT = "font-family='Inter, DejaVu Sans, Arial, sans-serif'"
 
 def text(x, y, s, size=16, fill='#e8eef8', weight=600, anchor='middle', extra=''):
-    A(f"<text x='{x}' y='{y}' {F} font-size='{size}' font-weight='{weight}' fill='{fill}' text-anchor='{anchor}' {extra}>{s}</text>")
+    A(f"<text x='{x}' y='{y}' {FONT} font-size='{size}' font-weight='{weight}' fill='{fill}' text-anchor='{anchor}' {extra}>{s}</text>")
 
-def tag(x, y, s, col, size=15, weight=700):
-    w = len(s) * size * 0.56 + 20
-    A(f"<rect x='{x-w/2:.1f}' y='{y-size*0.95:.1f}' width='{w:.1f}' height='{size*1.5:.1f}' rx='8' fill='#0a1222' fill-opacity='.85' stroke='{col}' stroke-width='1.3'/>")
-    text(x, y, s, size, col, weight)
+def lines(x, y, rows, size=16, fill='#e8eef8', weight=600, anchor='middle', lh=1.3):
+    for i, r in enumerate(rows):
+        text(x, y + i * size * lh, r, size, fill, weight, anchor)
 
-def hplus(x, y, r=13, op=1):
-    A(f"<g opacity='{op}'><circle cx='{x}' cy='{y}' r='{r}' fill='url(#gH)'/>"
-      f"<text x='{x}' y='{y+4.5}' {F} font-size='{r*0.95:.1f}' font-weight='800' fill='#3b1d00' text-anchor='middle'>H⁺</text></g>")
+def tag(x, y, rows, col, size=16, weight=700, bg='#0b1424'):
+    if isinstance(rows, str): rows = [rows]
+    w = max(len(r) for r in rows) * size * 0.56 + 26
+    h = len(rows) * size * 1.3 + 12
+    A(f"<rect x='{x-w/2:.1f}' y='{y-size-4:.1f}' width='{w:.1f}' height='{h:.1f}' rx='10' fill='{bg}' fill-opacity='.9' stroke='{col}' stroke-width='1.6'/>")
+    lines(x, y + 2, rows, size, col, weight)
 
-early = []
-def proton_arrow(x, y1, y2, col='#ffb347'):
-    early.append(f"<line x1='{x}' y1='{y1}' x2='{x}' y2='{y2}' stroke='{col}' stroke-width='4' stroke-linecap='round' marker-end='url(#arH)'/>")
+def leader(x1, y1, x2, y2, col='#e8eef8'):
+    A(f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='{col}' stroke-width='1.6' stroke-opacity='.8'/>")
+    A(f"<circle cx='{x2}' cy='{y2}' r='4' fill='{col}'/>")
 
+def hplus(x, y, r=14, op=1):
+    A(f"<g opacity='{op}'><circle cx='{x}' cy='{y}' r='{r}' fill='url(#gH)' stroke='#9a5a00' stroke-width='1'/>"
+      f"<text x='{x}' y='{y + r*0.36:.1f}' {FONT} font-size='{r*0.98:.1f}' font-weight='800' fill='#3b1d00' text-anchor='middle'>H⁺</text></g>")
+
+def badge(x, y, n):
+    A(f"<g filter='url(#sh)'><circle cx='{x}' cy='{y}' r='19' fill='#ff4d6d' stroke='#fff' stroke-width='2.5'/></g>")
+    text(x, y + 7, str(n), 20, '#ffffff', 800)
+
+def phosphate(x, y, r=11):
+    A(f"<circle cx='{x}' cy='{y}' r='{r}' fill='url(#gP)' stroke='#7c2d12' stroke-width='1.2'/>")
+    text(x, y + 4.5, 'P', 12, '#3b1300', 800)
+
+def nucleotide(x, y, nP):
+    """Ícone: adenosina (A) + nP fosfatos encadeados."""
+    xs = [x + 30 + 25 * i for i in range(nP)]
+    A(f"<line x1='{x}' y1='{y}' x2='{xs[-1]}' y2='{y}' stroke='#e2e8f0' stroke-width='3'/>")
+    if nP == 3:   # ligação rica em energia
+        A(f"<path d='M{xs[1]+6},{y-9} q 6,9 0,18' stroke='#fde047' stroke-width='2.5' fill='none'/>")
+    A(f"<circle cx='{x}' cy='{y}' r='17' fill='url(#gA)' stroke='#312e81' stroke-width='1.4'/>")
+    text(x, y + 5.5, 'A', 16, '#ffffff', 800)
+    for px in xs: phosphate(px, y)
+
+# ---------------- definições ----------------
 A(f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>")
-A("""<defs>
-<linearGradient id='gIMS' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#2a1430'/><stop offset='1' stop-color='#3a1a2e'/></linearGradient>
-<linearGradient id='gMat' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#10293d'/><stop offset='1' stop-color='#0a1a2b'/></linearGradient>
-<radialGradient id='gH' cx='.35' cy='.35'><stop offset='0' stop-color='#fff3c4'/><stop offset='.5' stop-color='#ffc04d'/><stop offset='1' stop-color='#e08a00'/></radialGradient>
-<marker id='arH' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='4.5' markerHeight='4.5' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#ffb347'/></marker>
-<marker id='arE' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='5' markerHeight='5' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#ffe14d'/></marker>
-<marker id='arW' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='5' markerHeight='5' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#e8eef8'/></marker>
-<filter id='sh' x='-20%' y='-20%' width='140%' height='140%'><feDropShadow dx='0' dy='4' stdDeviation='5' flood-color='#000' flood-opacity='.45'/></filter>
+A("<defs>")
+A("""<linearGradient id='gIMS' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#26142e'/><stop offset='1' stop-color='#3d1a32'/></linearGradient>
+<linearGradient id='gMat' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#0f2b40'/><stop offset='1' stop-color='#0a1b2c'/></linearGradient>
+<radialGradient id='gH' cx='.35' cy='.32'><stop offset='0' stop-color='#fff4c9'/><stop offset='.55' stop-color='#ffc04d'/><stop offset='1' stop-color='#e58e00'/></radialGradient>
+<radialGradient id='gP' cx='.35' cy='.32'><stop offset='0' stop-color='#fed7aa'/><stop offset='1' stop-color='#f97316'/></radialGradient>
+<radialGradient id='gA' cx='.35' cy='.32'><stop offset='0' stop-color='#a5b4fc'/><stop offset='1' stop-color='#4f46e5'/></radialGradient>
+<linearGradient id='gRing' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#b45309'/><stop offset='.35' stop-color='#fcd34d'/><stop offset='.6' stop-color='#f59e0b'/><stop offset='1' stop-color='#92400e'/></linearGradient>
+<linearGradient id='gRod' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#b45309'/><stop offset='.45' stop-color='#fde68a'/><stop offset='1' stop-color='#b45309'/></linearGradient>
+<linearGradient id='gStat' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#0f766e'/><stop offset='.45' stop-color='#5eead4'/><stop offset='1' stop-color='#0f766e'/></linearGradient>
+<marker id='arH' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='4' markerHeight='4' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#ffa733'/></marker>
+<marker id='arE' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='4.5' markerHeight='4.5' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#ffe14d'/></marker>
+<marker id='arW' viewBox='0 0 10 10' refX='5' refY='5' markerWidth='5' markerHeight='5' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#f1f5f9'/></marker>
+<filter id='sh' x='-30%' y='-30%' width='160%' height='160%'><feDropShadow dx='0' dy='5' stdDeviation='6' flood-color='#000' flood-opacity='.5'/></filter>
+<filter id='glow' x='-50%' y='-50%' width='200%' height='200%'><feGaussianBlur stdDeviation='6'/></filter>
 """)
-def grad(id, c1, c2):
-    A(f"<radialGradient id='{id}' cx='.35' cy='.3' r='.9'><stop offset='0' stop-color='{c1}'/><stop offset='1' stop-color='{c2}'/></radialGradient>")
-grad('g1', '#8ec2ff', '#2f6fc9'); grad('g2', '#8fe3b8', '#23905f'); grad('g3', '#c9a8ff', '#6e43c4')
-grad('g4', '#ffd08a', '#d27d12'); grad('g5', '#ff9fb0', '#c73b5a'); grad('gc', '#ff8a8a', '#c42a2a')
-grad('gQ', '#fff0a8', '#e0a800'); grad('gF1a', '#ffb6c3', '#d94d6c'); grad('gF1b', '#ffd6de', '#e77a93')
+def rgrad(id, c1, c2):
+    A(f"<radialGradient id='{id}' cx='.32' cy='.28' r='.95'><stop offset='0' stop-color='{c1}'/><stop offset='1' stop-color='{c2}'/></radialGradient>")
+rgrad('g1', '#93c5fd', '#2563eb'); rgrad('g2', '#86efac', '#16a34a'); rgrad('g3', '#d8b4fe', '#7c3aed')
+rgrad('g4', '#fdba74', '#ea580c'); rgrad('gc', '#fca5a5', '#dc2626'); rgrad('gQ', '#fef08a', '#ca8a04')
+rgrad('gAlpha', '#fde2e8', '#f08ca4'); rgrad('gBeta', '#fb9fb4', '#d4335a'); rgrad('gSub', '#99f6e4', '#0d9488')
 A("</defs>")
 
-# fundos
-A(f"<rect width='{W}' height='{MT}' fill='url(#gIMS)'/>")
-A(f"<rect y='{MB}' width='{W}' height='{H-MB}' fill='url(#gMat)'/>")
-A(f"<rect y='{MT}' width='{W}' height='{MB-MT}' fill='#3b2a1c'/>")
-# bicamada lipídica
-for x in range(-4, W + 10, 14):
-    for (yh, d) in ((MT + 8, 1), (MB - 8, -1)):
-        A(f"<path d='M{x-2.5},{yh} q -2,{d*22} 1,{d*44} M{x+2.5},{yh} q 2,{d*22} -1,{d*44}' stroke='#c79a55' stroke-opacity='.55' stroke-width='1.6' fill='none'/>")
-        A(f"<circle cx='{x}' cy='{yh}' r='6.3' fill='#f3e3b3'/>")
+# ---------------- fundo ----------------
+A(f"<rect width='{W}' height='{H}' fill='#081221'/>")
+A(f"<rect y='88' width='{W}' height='{MT-88}' fill='url(#gIMS)'/>")
+A(f"<rect y='{MB}' width='{W}' height='{800-MB}' fill='url(#gMat)'/>")
+A(f"<rect y='{MT}' width='{W}' height='{MB-MT}' fill='#3a2a1b'/>")
+for x in range(-4, W + 10, 15):
+    for (yh, d) in ((MT + 9, 1), (MB - 9, -1)):
+        A(f"<path d='M{x-2.5},{yh} q -2,{d*20} 1,{d*39} M{x+2.5},{yh} q 2,{d*20} -1,{d*39}' stroke='#c79a55' stroke-opacity='.5' stroke-width='1.6' fill='none'/>")
+        A(f"<circle cx='{x}' cy='{yh}' r='6.6' fill='#f3e3b3'/>")
 
-# gradiente de prótons (evitando textos e rótulos)
-KEEP_OUT = [(0, 0, 1600, 150), (0, 95, 360, 160), (90, 220, 370, 350), (430, 260, 580, 330), (620, 150, 830, 300),
-            (820, 210, 1110, 340), (1230, 140, 1500, 330)]
-n = 0
-while n < 46:
-    x, y = random.uniform(30, 1570), random.uniform(150, 325)
-    if any(a <= x <= c and b <= y <= d for a, b, c, d in KEEP_OUT): continue
-    hplus(round(x), round(y), 10, 0.55); n += 1
-EARLY_AT = len(out)
-for (x, y) in [(60, 600), (185, 690), (600, 560), (870, 770), (1170, 800), (1530, 560), (40, 760), (1560, 680)]:
-    hplus(round(x), round(y), 10, 0.4)
+# título
+text(800, 44, 'Respiração celular: cadeia respiratória e ATP sintase', 32, '#ffffff', 800)
+text(800, 74, 'Tudo acontece na membrana interna da mitocôndria', 17, '#cbd5e1', 500)
 
-# títulos de regiões
-text(800, 46, 'Fosforilação oxidativa', 36, '#ffffff', 800)
-text(800, 78, 'Cadeia transportadora de elétrons e ATP sintase na membrana mitocondrial interna', 18, '#cbd5e1', 500)
-text(24, 116, 'ESPAÇO INTERMEMBRANAS', 17, '#f9a8d4', 800, 'start')
-text(24, 138, 'alta [H⁺] · lado positivo (P)', 14, '#f9a8d4', 500, 'start')
-text(24, 862, 'MATRIZ MITOCONDRIAL', 17, '#7dd3fc', 800, 'start')
-text(24, 884, 'baixa [H⁺] · lado negativo (N)', 14, '#7dd3fc', 500, 'start')
-A(f"<rect x='1488' y='{MT+38}' width='106' height='44' rx='8' fill='#0a1222' fill-opacity='.8'/>")
-text(1541, MT + 56, 'Membrana', 13, '#f3e3b3', 700); text(1541, MT + 73, 'interna', 13, '#f3e3b3', 700)
-
-# ---------------- Complexo I ----------------
-A("<g filter='url(#sh)'>")
-A(f"<rect x='100' y='{MT-14}' width='250' height='{MB-MT+28}' rx='34' fill='url(#g1)'/>")
-A(f"<path d='M250,{MB-10} C245,560 255,640 270,690 C285,730 345,735 360,700 C375,660 345,560 340,{MB-10} Z' fill='url(#g1)'/>")
+# mini mitocôndria (localização)
+A("<g transform='translate(24,100)'>")
+A("<rect width='176' height='112' rx='14' fill='#0b1424' fill-opacity='.9' stroke='#334155'/>")
+A("<ellipse cx='88' cy='50' rx='70' ry='34' fill='#fb923c' stroke='#fed7aa' stroke-width='3'/>")
+A("<path d='M30,50 q8,-22 16,0 q8,22 16,0 q8,-22 16,0 q8,22 16,0 q8,-22 16,0 q8,22 16,0 q8,-22 14,0' stroke='#7c2d12' stroke-width='3.5' fill='none'/>")
+A("<rect x='92' y='20' width='26' height='26' fill='none' stroke='#ffffff' stroke-width='2.5' stroke-dasharray='4 3'/>")
+text(88, 102, 'mitocôndria (zoom)', 13, '#cbd5e1', 600)
 A("</g>")
-for i, (x, y) in enumerate([(318, 690), (312, 640), (305, 595), (300, 548), (300, 502), (305, 460)]):
-    A(f"<rect x='{x-6}' y='{y-6}' width='12' height='12' rx='2' fill='#b45309' stroke='#fde68a' stroke-width='1.3' transform='rotate(45 {x} {y})'/>")
-A("<circle cx='318' cy='712' r='9' fill='#fde047' stroke='#854d0e' stroke-width='1.5'/>")
-text(225, 395, 'Complexo I', 22, '#ffffff', 800); text(225, 419, 'NADH desidrogenase', 14, '#e0f2fe', 600)
-tag(205, 600, 'Fe–S', '#fbbf24', 13); tag(372, 735, 'FMN', '#fde047', 13)
-# NADH
-text(230, 790, 'NADH', 20, '#ffffff', 800); text(230, 814, '→ NAD⁺ + H⁺', 16, '#cbd5e1', 600)
-A("<path d='M262,778 C285,770 300,745 309,722' stroke='#e8eef8' stroke-width='2.2' fill='none' marker-end='url(#arW)'/>")
-for x in (130, 175, 220, 265):
-    proton_arrow(x, MB + 34, MT - 28)
-hplus(197, 270, 16); text(197, 236, '4 H⁺', 17, '#ffd28a', 800)
 
-# ---------------- Complexo II ----------------
-A("<g filter='url(#sh)'>")
-A(f"<path d='M425,{MT+40} C425,{MT+20} 540,{MT+20} 540,{MT+40} L545,640 C545,690 420,690 420,640 Z' fill='url(#g2)'/>")
-A("</g>")
-A("<circle cx='482' cy='620' r='9' fill='#fde047' stroke='#854d0e' stroke-width='1.5'/>")
-for (x, y) in [(486, 565), (490, 515), (492, 468)]:
-    A(f"<rect x='{x-5}' y='{y-5}' width='10' height='10' rx='2' fill='#b45309' stroke='#fde68a' stroke-width='1.2' transform='rotate(45 {x} {y})'/>")
-text(482, 744, 'Complexo II', 20, '#ffffff', 800); text(482, 766, 'Succinato desidrogenase', 14, '#d1fae5', 600)
-text(482, 806, 'Succinato → Fumarato', 16, '#ffffff', 700); text(482, 828, 'FAD → FADH₂', 15, '#bbf7d0', 600)
-tag(540, 612, 'FAD', '#fde047', 13)
-text(482, 856, 'não bombeia H⁺', 13, '#94a3b8', 600, extra="font-style='italic'")
+# regiões
+text(222, 128, 'ESPAÇO INTERMEMBRANAS', 19, '#f9a8d4', 800, 'start')
+text(222, 152, 'muitos H⁺ acumulados', 16, '#fbcfe8', 600, 'start')
+text(24, 762, 'MATRIZ MITOCONDRIAL', 19, '#7dd3fc', 800, 'start')
+text(24, 786, 'poucos H⁺', 16, '#bae6fd', 600, 'start')
+A(f"<rect x='8' y='{MT+24}' width='118' height='54' rx='10' fill='#0b1424' fill-opacity='.88'/>")
+lines(67, MT + 46, ['Membrana', 'interna'], 15, '#f3e3b3', 700, lh=1.2)
 
-# ---------------- Ubiquinona ----------------
-for (x, y, lab) in [(385, 405, 'Q'), (620, 392, 'QH₂')]:
-    A(f"<ellipse cx='{x}' cy='{y}' rx='24' ry='17' fill='url(#gQ)' stroke='#7c5800' stroke-width='1.5'/>")
-    text(x, y + 6, lab, 15, '#3b2a00', 800)
-A("<path d='M410,402 C470,388 540,380 594,390' stroke='#ffe14d' stroke-width='2.5' stroke-dasharray='6 5' fill='none' marker-end='url(#arE)'/>")
-tag(500, 290, 'Ubiquinona (Q / QH₂)', '#fde047', 15)
-A(f"<line x1='500' y1='298' x2='500' y2='{MT+42}' stroke='#fde047' stroke-width='1.3'/>")
+# H+ no espaço intermembranas (muitos) e na matriz (poucos)
+KEEP = [(0, 88, 520, 230), (370, 240, 575, 350), (140, 240, 330, 340), (540, 230, 900, 350), (900, 230, 1010, 350), (1020, 88, 1600, 360)]
+pts = []
+while len(pts) < 30:
+    x, y = random.uniform(30, 1010), random.uniform(170, 345)
+    if any(a <= x <= c and b <= y <= d for a, b, c, d in KEEP): continue
+    if any(math.hypot(x - p, y - q) < 34 for p, q in pts): continue
+    pts.append((x, y))
+for x, y in pts: hplus(round(x), round(y), 13, .8)
+for x, y in [(70, 560), (470, 720), (720, 650), (1000, 520)]: hplus(x, y, 13, .55)
 
-# ---------------- Complexo III ----------------
-A("<g filter='url(#sh)'>")
-A(f"<path d='M650,{MT-48} C650,{MT-70} 720,{MT-75} 722,{MT-50} C724,{MT-75} 795,{MT-70} 795,{MT-48} L800,560 C800,600 645,600 645,560 Z' fill='url(#g3)'/>")
-A("</g>")
-A(f"<line x1='722' y1='{MT-50}' x2='722' y2='585' stroke='#4c2a99' stroke-width='2' stroke-dasharray='4 4'/>")
-for (x, y, c, l) in [(690, 430, '#ef4444', 'b'), (760, 425, '#ef4444', 'b'), (705, 305, '#f97316', 'c₁'), (752, 320, '#b45309', 'FeS')]:
-    A(f"<circle cx='{x}' cy='{y}' r='9' fill='{c}' stroke='#fff' stroke-width='1.3'/>")
-text(722, 520, 'Complexo III', 21, '#ffffff', 800); text(722, 543, 'Citocromo bc₁', 14, '#ede9fe', 600)
-text(722, 562, '(ciclo Q)', 13, '#ddd6fe', 600)
-for x in (672, 700, 744, 772):
-    proton_arrow(x, MB + 20, MT - 96)
-hplus(722, 205, 16); text(722, 172, '4 H⁺', 17, '#ffd28a', 800)
+# ---------------- bombeamento de H+ (atrás das proteínas) ----------------
+def pump(x, top=250):
+    A(f"<line x1='{x}' y1='{MB+90}' x2='{x}' y2='{top}' stroke='#ffa733' stroke-width='11' stroke-linecap='round' marker-end='url(#arH)' opacity='.95'/>")
+pump(222); pump(612); pump(935)
+for (x, y) in [(222, 222), (612, 222), (935, 222)]:
+    hplus(x - 20, y, 14); hplus(x + 18, y - 8, 14)
 
-# ---------------- Citocromo c ----------------
-A("<g filter='url(#sh)'><circle cx='880' cy='292' r='30' fill='url(#gc)'/></g>")
-A("<rect x='870' y='282' width='20' height='20' rx='3' fill='#7f1d1d' stroke='#fecaca' stroke-width='1.4'/><circle cx='880' cy='292' r='3.5' fill='#fca5a5'/>")
-tag(880, 238, 'Citocromo c', '#fca5a5', 15)
+# ---------------- complexos ----------------
+def complex_shape(d, grad, label, name, lx, ly, light=True):
+    A(f"<g filter='url(#sh)'><path d='{d}' fill='url(#{grad})' stroke='#ffffff' stroke-opacity='.35' stroke-width='2'/></g>")
+    text(lx, ly, label, 44, '#ffffff', 800, extra="stroke='#0b1424' stroke-opacity='.25' stroke-width='1'")
+    lines(lx, ly + 26, name, 14, '#ffffff', 700, lh=1.15)
 
-# ---------------- Complexo IV ----------------
-A("<g filter='url(#sh)'>")
-A(f"<path d='M955,{MT-62} C955,{MT-82} 1095,{MT-82} 1095,{MT-62} L1105,590 C1105,630 950,630 950,590 Z' fill='url(#g4)'/>")
-A("</g>")
-for (x, y, c, l) in [(985, 300, '#0ea5e9', 'CuA'), (1015, 415, '#ef4444', 'a'), (1060, 425, '#ef4444', 'a₃'), (1065, 470, '#0ea5e9', 'CuB')]:
-    A(f"<circle cx='{x}' cy='{y}' r='9' fill='{c}' stroke='#fff' stroke-width='1.3'/>")
-    text(x + (24 if l != 'a' else -20), y + 5, l, 12, '#3b1d00', 800)
-text(1022, 530, 'Complexo IV', 20, '#3b1d00', 800); text(1022, 551, 'Citocromo c oxidase', 13, '#4a2a05', 700)
-text(1030, 700, '½ O₂ + 2 H⁺ → H₂O', 19, '#ffffff', 800)
-A("<path d='M1060,610 C1060,640 1048,660 1040,678' stroke='#e8eef8' stroke-width='2.2' fill='none' marker-start='url(#arW)'/>")
-text(1030, 725, 'aceptor final de elétrons', 13, '#94a3b8', 600, extra="font-style='italic'")
-for x in (990, 1062):
-    proton_arrow(x, MB + 34, MT - 108)
-hplus(1026, 205, 16); text(1026, 172, '2 H⁺', 17, '#ffd28a', 800)
+complex_shape("M140,345 Q140,322 165,322 L290,322 Q308,322 308,345 L308,600 Q308,628 280,628 L208,628 Q182,628 182,600 L182,486 L160,486 Q140,486 140,462 Z",
+              'g1', 'I', ['Complexo I'], 228, 430)
+complex_shape("M338,452 Q338,432 362,432 L418,432 Q440,432 440,452 L440,588 Q440,612 414,612 L364,612 Q338,612 338,588 Z",
+              'g2', 'II', ['Complexo', 'II'], 378, 500)
+complex_shape("M532,342 Q532,312 562,312 L660,312 Q690,312 690,342 L690,552 Q690,582 660,582 L562,582 Q532,582 532,552 Z",
+              'g3', 'III', ['Complexo III'], 611, 470)
+complex_shape("M856,342 Q856,312 886,312 L986,312 Q1014,312 1014,342 L1014,560 Q1014,592 984,592 L886,592 Q856,592 856,560 Z",
+              'g4', 'IV', ['Complexo IV'], 948, 470)
+
+# transportadores
+A("<g filter='url(#sh)'><circle cx='487' cy='420' r='24' fill='url(#gQ)' stroke='#713f12' stroke-width='2'/></g>")
+text(487, 427, 'Q', 20, '#422006', 800)
+tag(470, 292, ['Ubiquinona (Q)', 'transportador'], '#fde047', 14)
+leader(470, 312, 485, 394, '#fde047')
+A("<g filter='url(#sh)'><circle cx='772' cy='326' r='28' fill='url(#gc)' stroke='#7f1d1d' stroke-width='2'/></g>")
+text(772, 332, 'c', 20, '#ffffff', 800)
+tag(772, 258, ['Citocromo c', 'transportador'], '#fca5a5', 14)
 
 # ---------------- caminho dos elétrons ----------------
 def epath(d):
-    A(f"<path d='{d}' stroke='#ffe14d' stroke-width='3' stroke-dasharray='7 5' fill='none' marker-end='url(#arE)'/>")
-epath("M318,700 C312,600 300,520 352,420 L362,412")             # FMN → Fe-S → Q
-epath("M486,610 C492,540 495,470 420,416")                        # FAD → Fe-S → Q
-epath("M644,395 C664,398 680,410 690,420")                        # QH2 → III
-epath("M752,318 C790,300 820,292 846,290")                        # c1 → cyt c
-epath("M910,294 C935,296 955,298 973,300")                        # cyt c → CuA
-epath("M990,312 C1000,350 1008,380 1012,402")                     # CuA → a
-epath("M1026,413 C1034,407 1042,409 1049,417")                    # a → a3/CuB
-epath("M1074,478 C1097,515 1098,575 1068,607")                    # a3/CuB → O2
-for (x, y) in [(330, 560), (493, 520), (815, 296), (1091, 586)]:
-    A(f"<circle cx='{x}' cy='{y}' r='11' fill='#ffe14d'/>")
-    text(x, y + 4.5, 'e⁻', 12, '#3b2a00', 800)
+    A(f"<path d='{d}' stroke='#0b1424' stroke-width='9' stroke-linecap='round' fill='none' opacity='.5'/>")
+    A(f"<path d='{d}' stroke='#ffe14d' stroke-width='4.5' stroke-dasharray='10 7' stroke-linecap='round' fill='none' marker-end='url(#arE)'/>")
+epath("M290,676 L290,470 C290,420 350,396 460,414")                       # NADH → I → Q
+epath("M422,676 L422,470 C422,450 440,440 464,434")                       # FADH2 → II → Q
+epath("M513,420 C560,420 590,420 605,392 C622,350 700,330 740,327")       # Q → III → cit c
+epath("M803,326 C840,326 872,345 872,390 L872,640")                       # cit c → IV → O2
+def ebead(x, y):
+    A(f"<circle cx='{x}' cy='{y}' r='13' fill='#ffe14d' stroke='#713f12' stroke-width='1.5'/>")
+    text(x, y + 5, 'e⁻', 13, '#3b2a00', 800)
+for x, y in [(290, 620), (422, 620), (560, 420), (690, 335), (838, 330), (872, 560)]: ebead(x, y)
+
+# reações de entrada e saída
+A("<g filter='url(#sh)'><rect x='182' y='680' width='128' height='60' rx='14' fill='#0b1424' stroke='#93c5fd' stroke-width='2'/></g>")
+text(246, 707, 'NADH', 22, '#ffffff', 800); text(246, 729, '→ NAD⁺', 15, '#bfdbfe', 600)
+A("<g filter='url(#sh)'><rect x='328' y='680' width='122' height='60' rx='14' fill='#0b1424' stroke='#86efac' stroke-width='2'/></g>")
+text(389, 707, 'FADH₂', 22, '#ffffff', 800); text(389, 729, '→ FAD', 15, '#bbf7d0', 600)
+A("<g filter='url(#sh)'><rect x='820' y='648' width='170' height='74' rx='14' fill='#0b1424' stroke='#7dd3fc' stroke-width='2'/></g>")
+text(905, 678, 'O₂ + H⁺', 21, '#ffffff', 800); text(905, 706, '→ H₂O (água)', 17, '#bae6fd', 700)
+badge(170, 678, 1); badge(560, 226, 2); badge(1008, 650, 3)
 
 # ---------------- ATP sintase ----------------
-cx = 1345
-A("<g filter='url(#sh)'>")
-# estator periférico (b + OSCP)
-A(f"<path d='M1440,{MB-10} L1452,700 C1452,745 1410,770 1370,768' stroke='#f0abbb' stroke-width='14' fill='none' stroke-linecap='round'/>")
-# subunidade a
-A(f"<rect x='1415' y='{MT-6}' width='56' height='{MB-MT+12}' rx='20' fill='url(#g5)'/>")
-# anel c
-A(f"<rect x='1265' y='{MT-4}' width='150' height='{MB-MT+8}' rx='26' fill='#b8324f'/>")
-for i in range(8):
-    x = 1278 + i * 17.5
-    A(f"<rect x='{x}' y='{MT+2}' width='13' height='{MB-MT-4}' rx='6' fill='url(#g5)'/>")
-# haste central γ/ε
-A(f"<rect x='{cx-11}' y='{MB}' width='22' height='130' rx='9' fill='#f472b6'/>")
-# F1: α3β3
-for k in range(6):
-    a = k * math.pi / 3 + math.pi / 6
-    x, y = cx + 62 * math.cos(a), 680 + 46 * math.sin(a)
-    A(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='40' fill='url(#{'gF1a' if k % 2 else 'gF1b'})'/>")
-A(f"<ellipse cx='{cx}' cy='768' rx='24' ry='14' fill='#f0abbb'/>")
-A("</g>")
-text(cx - 128, 690, 'F₁', 26, '#fda4af', 800)
-text(cx - 62, 640, 'β', 15, '#5a0d22', 800); text(cx + 62, 640, 'α', 15, '#5a0d22', 800)
-text(cx + 2, MT + 63, 'F₀', 24, '#ffe4ea', 800)
-# rotação
-A(f"<path d='M1278,{MB+26} A72,16 0 0 0 1412,{MB+26}' stroke='#ffffff' stroke-width='2.4' fill='none' marker-end='url(#arW)'/>")
-text(1240, MB + 52, 'rotação', 13, '#e8eef8', 700)
-# fluxo de H+ a favor do gradiente
-A(f"<path d='M1443,{MT-118} L1443,{MB+40}' stroke='#ffb347' stroke-width='6' stroke-linecap='round' marker-end='url(#arH)'/>")
-hplus(1443, MT - 136, 16); text(1443, MT - 166, '≈ 3 H⁺', 17, '#ffd28a', 800)
-tag(cx - 30, 168, 'ATP sintase', '#fda4af', 19, 800)
-text(cx - 30, 196, '(Complexo V)', 14, '#fecdd3', 600)
-# síntese de ATP
-text(1500, 790, 'ADP + Pᵢ', 20, '#ffffff', 800)
-A("<path d='M1490,800 C1470,830 1440,840 1410,836' stroke='#e8eef8' stroke-width='2.2' fill='none' marker-end='url(#arW)'/>")
-A("<g filter='url(#sh)'><rect x='1300' y='815' width='96' height='40' rx='20' fill='#fde047'/></g>")
-text(1348, 842, 'ATP', 22, '#3b2a00', 800)
+cx, rx, ry = 1240, 82, 20
+yt, yb = MT + 2, MB - 2
+# título
+tag(cx, 128, ['ATP sintase'], '#fda4af', 26, 800)
+text(cx, 168, 'uma “turbina” que fabrica ATP', 16, '#fecdd3', 600)
+badge(cx - 118, 120, 4)
 
-# ---------------- legenda ----------------
-A("<rect x='600' y='850' width='640' height='38' rx='12' fill='#0a1222' fill-opacity='.85'/>")
-A("<line x1='620' y1='869' x2='660' y2='869' stroke='#ffe14d' stroke-width='3' stroke-dasharray='7 5'/>")
-text(668, 874, 'fluxo de elétrons', 14, '#fde68a', 600, 'start')
-A("<line x1='812' y1='869' x2='848' y2='869' stroke='#ffb347' stroke-width='4' marker-end='url(#arH)'/>")
-text(860, 874, 'bombeamento de H⁺', 14, '#ffd28a', 600, 'start')
-text(1010, 874, '~2,5 ATP/NADH · ~1,5 ATP/FADH₂', 14, '#e2e8f0', 700, 'start')
-text(800, 112, 'Força próton-motriz (ΔpH + Δψ): 10 H⁺ bombeados por NADH oxidado', 15, '#fbcfe8', 600)
-out[EARLY_AT:EARLY_AT] = early
+# H+ esperando para entrar
+for (x, y) in [(1340, 205), (1378, 238), (1338, 262), (1395, 290), (1352, 315)]: hplus(x, y, 14)
+text(1460, 222, 'H⁺ voltam', 15, '#ffd28a', 700, 'start'); text(1460, 241, 'a favor do', 15, '#ffd28a', 700, 'start'); text(1460, 260, 'gradiente', 15, '#ffd28a', 700, 'start')
+
+# estator periférico (b) — atrás da cabeça
+A(f"<path d='M1378,{yb} C1410,540 1418,660 1372,722 C1345,758 1300,770 1270,772' stroke='url(#gStat)' stroke-width='18' fill='none' stroke-linecap='round' filter='url(#sh)'/>")
+
+# cabeça F1 — lóbulos de trás
+F1Y = 668
+lobes = []
+for k in range(6):
+    ang = math.radians(k * 60 + 30)
+    lobes.append((math.cos(ang), cx + 74 * math.sin(ang), F1Y - 14 * math.cos(ang), k % 2))
+lobes.sort()
+for depth, x, y, beta in lobes[:3]:
+    A(f"<ellipse cx='{x:.1f}' cy='{y:.1f}' rx='44' ry='60' fill='url(#{'gBeta' if beta else 'gAlpha'})' stroke='#7f1d3a' stroke-width='1.5' opacity='.9'/>")
+# eixo central (gira)
+A(f"<rect x='{cx-15}' y='{yb-4}' width='30' height='{F1Y-yb+20}' rx='12' fill='url(#gRod)' stroke='#78350f' stroke-width='1.5'/>")
+# anel rotor (F0) em perspectiva
+A(f"<path d='M{cx-rx},{yt} L{cx-rx},{yb} A{rx},{ry} 0 0 0 {cx+rx},{yb} L{cx+rx},{yt} Z' fill='url(#gRing)' stroke='#78350f' stroke-width='1.5'/>")
+for i in range(1, 10):
+    x = cx - rx * math.cos(i * math.pi / 10)          # faixas (subunidades c) na face visível
+    A(f"<line x1='{x:.1f}' y1='{yt + ry * math.sin(i*math.pi/10):.1f}' x2='{x:.1f}' y2='{yb + ry * math.sin(i*math.pi/10):.1f}' stroke='#78350f' stroke-width='1.6' stroke-opacity='.7'/>")
+A(f"<ellipse cx='{cx}' cy='{yt}' rx='{rx}' ry='{ry}' fill='#fde68a' stroke='#78350f' stroke-width='1.5'/>")
+A(f"<ellipse cx='{cx}' cy='{yt}' rx='{rx-30}' ry='{ry-8}' fill='#d97706' opacity='.6'/>")
+# subunidade a (canal de H+, parada)
+A(f"<g filter='url(#sh)'><rect x='{cx+rx-6}' y='{MT-18}' width='66' height='{MB-MT+36}' rx='24' fill='url(#gSub)' stroke='#134e4a' stroke-width='1.5'/></g>")
+# trajeto do H+ pelo canal
+A(f"<path d='M1357,330 L1357,384 C1357,414 1316,420 1300,430 C1290,438 1306,460 1310,482 L1310,548' stroke='#ffa733' stroke-width='7' fill='none' stroke-linecap='round' marker-end='url(#arH)'/>")
+hplus(1300, 432, 13); hplus(1312, 570, 14)
+# lóbulos da frente
+for depth, x, y, beta in lobes[3:]:
+    A(f"<ellipse cx='{x:.1f}' cy='{y:.1f}' rx='44' ry='60' fill='url(#{'gBeta' if beta else 'gAlpha'})' stroke='#7f1d3a' stroke-width='1.5'/>")
+    A(f"<ellipse cx='{x-12:.1f}' cy='{y-24:.1f}' rx='12' ry='18' fill='#ffffff' opacity='.25'/>")
+A(f"<ellipse cx='{cx}' cy='{F1Y+70}' rx='30' ry='12' fill='url(#gSub)' stroke='#134e4a' stroke-width='1.5'/>")
+# setas de rotação
+A(f"<path d='M{cx-rx-8},{yb+30} A{rx+8},{ry+8} 0 0 0 {cx+rx-14},{yb+34}' stroke='#ffffff' stroke-width='3.5' fill='none' marker-end='url(#arW)'/>")
+A(f"<path d='M{cx-38},{F1Y-92} A38,10 0 0 0 {cx+30},{F1Y-90}' stroke='#ffffff' stroke-width='3' fill='none' marker-end='url(#arW)'/>")
+
+# ADP + P entram, ATP sai
+nucleotide(1046, 594, 2); text(1118, 600, '+', 22, '#ffffff', 800); phosphate(1140, 594, 12)
+text(1092, 566, 'ADP + P', 17, '#e2e8f0', 700)
+A("<path d='M1150,616 C1165,640 1175,650 1188,658' stroke='#f1f5f9' stroke-width='3' fill='none' marker-end='url(#arW)'/>")
+A("<path d='M1180,720 C1160,745 1140,752 1125,754' stroke='#f1f5f9' stroke-width='3' fill='none' marker-end='url(#arW)'/>")
+A("<ellipse cx='1080' cy='758' rx='72' ry='26' fill='#fde047' filter='url(#glow)' opacity='.45'/>")
+nucleotide(1030, 758, 3)
+text(1066, 732, 'ATP', 22, '#fde047', 800)
+
+# legendas da ATP sintase
+tag(1500, 336, ['Canal de H⁺'], '#5eead4', 15); leader(1450, 336, 1390, 360, '#5eead4')
+tag(1085, 418, ['Rotor', '(gira)'], '#fcd34d', 15); leader(1123, 420, 1165, 420, '#fcd34d')
+tag(1505, 520, ['Eixo central', '(gira junto)'], '#fcd34d', 15); leader(1445, 522, 1256, 540, '#fcd34d')
+tag(1510, 640, ['Cabeça F₁:', 'monta o ATP'], '#fda4af', 15); leader(1450, 642, 1318, 668, '#fda4af')
+tag(1500, 750, ['Estator', '(fica parado)'], '#5eead4', 15); leader(1442, 752, 1385, 712, '#5eead4')
+
+# ---------------- passo a passo ----------------
+A("<rect x='0' y='808' width='1600' height='192' fill='#060d19'/>")
+CARDS = [
+    ('Elétrons entram', '#93c5fd', ['NADH e FADH₂ (vindos da glicólise', 'e do ciclo de Krebs) entregam', 'elétrons para a cadeia.']),
+    ('H⁺ são bombeados', '#ffc46b', ['Ao passar pelos complexos I, III e IV,', 'os elétrons liberam energia, usada', 'para bombear H⁺ para fora da matriz.']),
+    ('O₂ recebe os elétrons', '#7dd3fc', ['No fim da cadeia, o oxigênio recebe', 'os elétrons e H⁺ e forma água.', 'Sem O₂, a cadeia para!']),
+    ('ATP é produzido', '#fda4af', ['Os H⁺ voltam para a matriz pela ATP', 'sintase, que gira como uma turbina e', 'une ADP + P → ATP.']),
+]
+for i, (title, col, body) in enumerate(CARDS):
+    x0 = 16 + i * 396
+    A(f"<rect x='{x0}' y='822' width='380' height='164' rx='16' fill='#0f1b2e' stroke='{col}' stroke-opacity='.6' stroke-width='1.6'/>")
+    badge(x0 + 34, 856, i + 1)
+    text(x0 + 64, 863, title, 20, col, 800, 'start')
+    lines(x0 + 22, 900, body, 16, '#e2e8f0', 500, 'start', lh=1.35)
 A("</svg>")
 
 p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fosforilacao-oxidativa.svg')
