@@ -321,6 +321,9 @@ select.tin{appearance:auto}
 .pv > small{color:var(--muted);font-size:12px}
 .pv ol{margin:6px 0 0;padding-left:20px;display:grid;gap:3px;font-size:14px}
 .gerr[hidden]{display:none}
+.gestcard{margin-block:10px;border-left:4px solid var(--ela)}
+.gestcard h4{color:var(--ela)}
+.gestcard p{margin:0 0 10px}
 </style>
 <style>:root{color-scheme:light dark}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
 <div class="top" id="top">
@@ -355,151 +358,663 @@ select.tin{appearance:auto}
 
 <script>
 let DAYS = [
- {id:"qui", dow:4, chip:"Qui · A", sub:"Empurrar", eyebrow:"Dia 1 · Quinta", title:"A · Empurrar", focus:"Peito, ombro e tríceps", time:"≈ 45 min + cardio",
-  note:"<b>Equilíbrio postural:</b> para cada empurrar, ela faz um puxar ou abrir de peito (face pull e anjo na parede) para não reforçar ombros caídos para a frente.",
-  ex:[
-  {n:"Supino reto",
-   ela:{v:"Com halteres",s:"3 × 12",d:"desc. 60s",t:"Escápulas encaixadas para trás e para baixo. Pés firmes no chão, glúteo no banco e só um arco leve na lombar, sem exagero."},
-   ele:{v:"Com barra",s:"4 × 6–10",d:"desc. 2–3 min",t:"3s descendo até tocar leve no peito, cotovelos a 45–60° do tronco. Sobe forte sem tirar o glúteo do banco."}},
-  {n:"Supino inclinado com halteres (30°)",
-   ela:{s:"3 × 12",d:"desc. 60s",t:"Banco baixo, em 30°, poupa o ombro. Desça até a linha do peito."},
-   ele:{s:"3 × 8–12",d:"desc. 90s",t:"Desça fundo até sentir o peito alongar, pausa curta embaixo. Os halteres se aproximam em cima sem bater."}},
-  {n:"Desenvolvimento de ombros",
-   ela:{v:"Na máquina, costas apoiadas",s:"3 × 12",d:"desc. 60s",t:"Encosto bem vertical e lombar apoiada. Ao empurrar, contraia abdômen e glúteo para as costas não arquearem."},
-   ele:{v:"Halteres, sentado (encosto 80–90°)",s:"3 × 8–12",d:"desc. 90s",t:"Desça até os halteres ficarem na altura das orelhas ou pouco abaixo. Cadência 2-0-1."}},
-  {n:"Crucifixo (cross-over ou peck deck)",
-   ela:{s:"2 × 15",d:"desc. 45s",t:"Cotovelos levemente dobrados e fixos. Peito aberto."},
-   ele:{s:"2 × 12–15",d:"desc. 60s",t:"Segure 1s na abertura, com o peito alongado. Última série até a falha."}},
-  {n:"Elevação lateral com halteres",
-   ela:{s:"3 × 15",d:"desc. 45s",t:"Carga leve. Suba até a altura do ombro sem encolher o pescoço."},
-   ele:{s:"3 × 12–15",d:"desc. 60s",t:"Tronco levemente inclinado à frente; o cotovelo guia o movimento. 3s descendo."}},
-  {n:"Tríceps na polia (corda)",
-   ela:{s:"3 × 15",d:"desc. 45s",t:"Cotovelos colados ao corpo: só o antebraço se move."},
-   ele:{s:"3 × 10–12",d:"desc. 60s",t:"Abra a corda embaixo e segure 1s. Volte até o antebraço passar dos 90°."}},
-  {n:"Face pull (polia alta, corda)",
-   ela:{s:"3 × 15",d:"no descanso dele",t:"Puxe a corda em direção aos olhos abrindo os cotovelos e girando os punhos para fora. É o principal corretivo para ombros projetados à frente."},
-   ele:{s:"2 × 15",d:"desc. 45s",t:"Protege o ombro para aguentar o volume de supino. Carga leve, contração no final."}},
-  {n:"Anjo na parede",
-   ela:{s:"2 × 10",d:"no descanso dele",t:"Cabeça, costas e lombar encostadas na parede. Deslize os braços para cima sem desencostar. Abre o peito e melhora a mobilidade torácica."}}
- ]},
- {id:"sex", dow:5, chip:"Sex · B", sub:"Pernas", eyebrow:"Dia 2 · Sexta", title:"B · Inferiores", focus:"Quadríceps e glúteo", time:"≈ 50 min + cardio",
-  note:"<b>Encaixe:</b> o Pallof e a prancha dela (7 e 8) são feitos nos descansos longos dele no agachamento e no búlgaro.",
-  ex:[
-  {n:"Agachamento",
-   ela:{v:"Goblet (halter junto ao peito)",s:"3 × 12",d:"desc. 60s",t:"Halter colado ao peito e peito aberto. Desça só até onde a lombar continua neutra, sem arredondar no fundo. Joelhos na direção da ponta dos pés."},
-   ele:{v:"Livre com barra",s:"4 × 6–10",d:"desc. 2–3 min",t:"Cadência 3-1-1: 3s descendo, 1s de pausa no fundo, sobe forte. Desça abaixo do paralelo enquanto a lombar se mantiver neutra."}},
-  {n:"Afundo",
-   ela:{v:"Afundo estático, peso do corpo ou halteres leves",s:"3 × 12/perna",d:"desc. 45–60s",t:"Tronco alto e abdômen firme. Pode segurar num apoio para focar só na perna. O joelho de trás desce reto em direção ao chão."},
-   ele:{v:"Búlgaro com halteres (pé de trás no banco)",s:"3 × 8–10/perna",d:"desc. 90s",t:"Passo longo e tronco levemente à frente para mais glúteo. Desça em 3s até alongar bem a frente do quadril de trás."}},
-  {n:"Leg press 45°",
-   ela:{s:"3 × 15",d:"desc. 60s",t:"Lombar e quadril colados no encosto o tempo todo. Pare a descida antes de o quadril descolar do banco."},
-   ele:{s:"3 × 10–12",d:"desc. 90s–2 min",t:"Pés na largura do quadril, no meio da plataforma. Amplitude máxima sem o quadril sair do banco. Não trave os joelhos em cima."}},
-  {n:"Cadeira extensora",
-   ela:{s:"3 × 15",d:"desc. 45s",t:"Costas apoiadas, mãos nas alças. Suba controlando, sem trancos."},
-   ele:{s:"3 × 10–12 + drop-set na última",d:"desc. 60–90s",t:"Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."}},
-  {n:"Glúteo na polia (coice)", k:"gluteo-polia",
-   ela:{s:"3 × 12–15/perna",d:"desc. 45–60s",t:"Polia baixa com caneleira no tornozelo. Mãos apoiadas no aparelho, tronco levemente inclinado e abdômen firme. Leve a perna para trás apertando o glúteo e pare antes de a lombar arquear ou o quadril girar."},
-   ele:{s:"3 × 10–12/perna",d:"desc. 60s",t:"Segure 1s lá atrás apertando o glúteo e volte em 2–3s. Tronco parado: quem se move é só o quadril. Carga que permita controle total."}},
-  {n:"Panturrilha em pé",
-   ela:{s:"3 × 15–20",d:"desc. 30–45s",t:"Movimento completo e sem pressa."},
-   ele:{s:"3 × 10–15",d:"desc. 60s",t:"Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."}},
-  {n:"Pallof press (polia ou elástico)",
-   ela:{s:"3 × 10/lado",d:"no descanso dele",t:"De lado para a polia, braços estendidos à frente do peito. Não deixe o tronco girar. Ensina o core a proteger a coluna contra rotação."}},
-  {n:"Prancha frontal",
-   ela:{s:"3 × 30–40s",d:"no descanso dele",t:"Glúteo contraído e costelas para baixo; o quadril não pode cair. Se a lombar incomodar, apoie os joelhos."}}
- ]},
- {id:"sab", dow:6, chip:"Sáb · C", sub:"Puxar", eyebrow:"Dia 3 · Sábado", title:"C · Puxar", focus:"Costas, bíceps e posterior de ombro", time:"≈ 45 min + cardio",
-  note:"<b>Dia da postura:</b> ela fecha com o “Big 3” de McGill (7, 8 e 9), a sequência mais estudada para resistência do core e proteção da lombar.",
-  ex:[
-  {n:"Puxada frontal (pulldown)",
-   ela:{s:"3 × 12",d:"desc. 60s",t:"Peito aberto e tronco quase vertical, só uma leve inclinação. Puxe até o alto do peito levando os cotovelos para baixo e para trás."},
-   ele:{s:"4 × 8–12",d:"desc. 90s–2 min",t:"Em cima, deixe os braços esticarem totalmente e as costas alongarem. Volta em 2–3s."}},
-  {n:"Remada",
-   ela:{v:"Halteres com peito apoiado no banco inclinado",s:"3 × 12",d:"desc. 60s",t:"O banco sustenta o tronco e tira a carga da lombar. Leve os cotovelos para trás e junte as escápulas por 1s."},
-   ele:{v:"Curvada com barra",s:"3 × 8–10",d:"desc. 2 min",t:"Tronco a ~45°, lombar neutra, joelhos levemente dobrados. Puxe a barra em direção ao umbigo. Se a lombar cansar antes das costas, faça a versão com peito apoiado."}},
-  {n:"Pullover na polia (braços estendidos)",
-   ela:{s:"2 × 15",d:"desc. 45s",t:"Costelas para baixo: a lombar não arqueia quando os braços sobem."},
-   ele:{s:"3 × 12",d:"desc. 60s",t:"Braços quase retos. Leve a barra das coxas até acima da cabeça, alongando bem o latíssimo."}},
-  {n:"Crucifixo invertido (peck deck)",
-   ela:{s:"3 × 15",d:"desc. 45s",t:"Exercício-chave para a postura: fortalece o meio das costas e o posterior do ombro. Peito no apoio, sem encolher o pescoço."},
-   ele:{s:"3 × 12–15",d:"desc. 60s",t:"Braços abrem em arco largo. Segure 1s atrás."}},
-  {n:"Rosca direta (barra W)",
-   ela:{s:"2 × 12–15",d:"desc. 45s",t:"Sem balançar o tronco. Glúteo e abdômen firmes."},
-   ele:{s:"3 × 8–12",d:"desc. 60–90s",t:"Cotovelos fixos ao lado do corpo. 3s descendo até o braço estender todo."}},
-  {n:"Rosca martelo",
-   ele:{s:"2 × 10–12",d:"desc. 60s",t:"Pegada neutra: trabalha braquial e antebraço. Sem impulso."}},
-  {n:"Curl-up de McGill",
-   ela:{s:"3 × 6 (segura 8s)",d:"no descanso dele",t:"Deitada, uma perna dobrada e as mãos sob a lombar. Eleve só cabeça e ombros alguns centímetros, sem dobrar o pescoço. Abdômen forte sem flexionar a coluna."}},
-  {n:"Prancha lateral",
-   ela:{s:"3 × 20–30s/lado",d:"no descanso dele",t:"Corpo em linha reta. Comece com os joelhos apoiados e passe para os pés quando ficar fácil."}},
-  {n:"Bird-dog",
-   ela:{s:"3 × 6/lado (segura 8s)",d:"no descanso dele",t:"Em quatro apoios, estique braço e perna opostos sem girar o quadril, como se houvesse um copo d’água nas suas costas."}},
-  {n:"Abdominal na polia (opcional)",
-   ele:{s:"3 × 12–15",d:"desc. 60s",t:"Ajoelhado, enrole o tronco trazendo as costelas em direção ao quadril."}}
- ]},
- {id:"dom", dow:0, chip:"Dom · FB1", sub:"Fullbody", eyebrow:"Dia 4 · Domingo", title:"Fullbody 1", focus:"Posterior de coxa, glúteo, peito e ombro", time:"≈ 50 min + cardio",
-  note:"<b>Sem costas hoje:</b> foram treinadas ontem. O domingo repete peito e ombro (72h depois de quinta) e trabalha o quadril em dobradiça.",
-  ex:[
-  {n:"Levantamento terra romeno (stiff)",
-   ela:{v:"Com halteres, carga leve a moderada",s:"3 × 10–12",d:"desc. 60–90s",t:"Empurre o quadril para trás como se fechasse uma porta com o bumbum, halteres raspando as coxas. Desça só até onde a lombar continua reta (em geral até o joelho ou o meio da canela). Se a lombar doer, troque pela mesa flexora."},
-   ele:{v:"Com barra",s:"4 × 8–10",d:"desc. 2 min",t:"3s descendo até o máximo alongamento do posterior de coxa, lombar neutra. Não precisa tocar o chão."}},
-  {n:"Mesa flexora",
-   ela:{s:"3 × 12–15",d:"desc. 45s",t:"Quadril colado no banco. Se a lombar arquear, reduza a carga."},
-   ele:{s:"3 × 10–12",d:"desc. 60–90s",t:"Segure 1s com o joelho dobrado e volte em 3s."}},
-  {n:"Empurrar inclinado",
-   ela:{v:"Flexão de braço inclinada (mãos no banco ou na barra do Smith)",s:"3 × 10–12",d:"desc. 60s",t:"Corpo em prancha da cabeça ao calcanhar. Para progredir, baixe a altura das mãos com o tempo."},
-   ele:{v:"Supino inclinado na máquina ou no Smith",s:"3 × 8–12",d:"desc. 90s",t:"Desça até alongar o peito, pausa curta, e suba sem travar os cotovelos."}},
-  {n:"Cadeira abdutora",
-   ela:{s:"3 × 15–20",d:"desc. 45s",t:"Tronco levemente inclinado à frente pega mais glúteo. Glúteo médio forte estabiliza a pelve e alivia a lombar."}},
-  {n:"Elevação lateral na polia (unilateral)",
-   ela:{s:"2 × 15",d:"desc. 45s",t:"Carga leve, ombro longe da orelha."},
-   ele:{s:"3 × 12–15",d:"desc. 60s",t:"Polia baixa com o cabo passando por trás do corpo: o deltoide trabalha mais alongado."}},
-  {n:"Tríceps",
-   ela:{v:"Polia com barra reta, em pé",s:"2 × 15",d:"desc. 45s",t:"Por enquanto, evite tríceps acima da cabeça: ele tende a arquear a lombar."},
-   ele:{v:"Francês na polia (corda acima da cabeça)",s:"3 × 10–12",d:"desc. 60s",t:"Tríceps na posição alongada estimula mais a cabeça longa. Costelas para baixo."}},
-  {n:"Panturrilha sentado",
-   ele:{s:"3 × 12–15",d:"desc. 60s",t:"Pausa de 2s embaixo, na posição alongada."}},
-  {n:"Caminhada do fazendeiro",
-   ela:{s:"3 × 30–40 m",d:"desc. 60s",t:"Um halter pesado em cada mão. Ande alta, ombros para trás e para baixo, passos curtos. Treina core, postura e gasta bastante energia."}}
- ]},
- {id:"seg", dow:1, chip:"Seg · FB2", sub:"Fullbody", eyebrow:"Dia 5 · Segunda", title:"Fullbody 2", focus:"Costas, quadríceps e braços", time:"≈ 45 min + cardio",
-  note:"<b>Sem peito hoje:</b> foi ontem. Costas voltam 48h depois de sábado. Ele pode fazer 5 e 6 em superset (alternando), com 60s de descanso após o par.",
-  ex:[
-  {n:"Puxada vertical",
-   ela:{v:"Puxada com triângulo (pegada neutra)",s:"3 × 12",d:"desc. 60s",t:"Peito em direção à barra, ombros longe das orelhas."},
-   ele:{v:"Barra fixa (ou graviton)",s:"4 × 6–10",d:"desc. 2 min",t:"Desça até esticar os braços por completo. Passou de 10 reps em todas as séries? Acrescente carga com cinto ou halter entre os pés."}},
-  {n:"Quadríceps",
-   ela:{v:"Subida no banco (step-up) com halteres",s:"3 × 10/perna",d:"desc. 60s",t:"Banco na altura do joelho ou abaixo. Empurre pelo calcanhar da perna de cima, sem impulso da perna de baixo. Tronco alto."},
-   ele:{v:"Agachamento hack (máquina)",s:"3 × 10–12",d:"desc. 2 min",t:"Pés mais baixos na plataforma para focar no quadríceps. 3s descendo, amplitude total."}},
-  {n:"Remada sentada na máquina (pegada neutra)",
-   ela:{s:"3 × 12–15",d:"desc. 60s",t:"Sente alta, peito no apoio. Puxe sem jogar o tronco para trás e junte as escápulas por 1s."},
-   ele:{s:"3 × 10–12",d:"desc. 90s",t:"Na volta, deixe as escápulas se afastarem para alongar as costas. Volta em 3s."}},
-  {n:"Cadeira extensora",
-   ela:{s:"2 × 15",d:"desc. 45s",t:"Controle total, sem trancos."},
-   ele:{s:"2 × 12–15",d:"desc. 60s",t:"Segure 1s em cima. Última série até a falha."}},
-  {n:"Rosca inclinada com halteres",
-   ele:{s:"3 × 10–12",d:"desc. 60s (superset)",t:"Banco a 45°, braços pendurados atrás do corpo: bíceps trabalhando alongado."}},
-  {n:"Tríceps testa (barra W)",
-   ele:{s:"3 × 10–12",d:"desc. 60s (superset)",t:"Leve a barra para trás da cabeça, e não até a testa, para alongar mais o tríceps."}},
-  {n:"Dead bug",
-   ela:{s:"3 × 10/lado",d:"no descanso dele",t:"Lombar sempre encostada no chão. Solte o ar ao estender braço e perna opostos."}},
-  {n:"Prancha lateral",
-   ela:{s:"3 × 30s/lado",d:"no descanso dele",t:"Progrida dos joelhos para os pés. Quadril alto, corpo em linha."}}
- ]}
+ {
+  "id": "qui",
+  "dow": 4,
+  "chip": "Qui · A",
+  "sub": "Empurrar",
+  "eyebrow": "Dia 1 · Quinta",
+  "title": "A · Empurrar",
+  "focus": "Peito, ombro e tríceps",
+  "time": "≈ 45 min + cardio",
+  "note": "<b>Equilíbrio postural:</b> para cada empurrar, ela faz um puxar ou abrir de peito (face pull e anjo na parede) para não reforçar ombros caídos para a frente.",
+  "ex": [
+   {
+    "n": "Supino reto",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Sentada, costas apoiadas no encosto. Carga que permita terminar com 3–4 repetições sobrando. Solte o ar no esforço e nunca prenda a respiração.",
+     "rs": 75,
+     "v": "Supino na máquina, sentada (chest press)"
+    },
+    "ele": {
+     "v": "Com barra",
+     "s": "4 × 6–10",
+     "d": "desc. 2–3 min",
+     "t": "3s descendo até tocar leve no peito, cotovelos a 45–60° do tronco. Sobe forte sem tirar o glúteo do banco."
+    },
+    "k": "0"
+   },
+   {
+    "n": "Supino inclinado com halteres (30°)",
+    "ela": {
+     "s": "2 × 12",
+     "d": "desc. 75s",
+     "t": "Banco a 30–45°, nunca deitada reta. Halteres moderados e movimento controlado. Solte o ar no esforço e nunca prenda a respiração.",
+     "rs": 75
+    },
+    "ele": {
+     "s": "3 × 8–12",
+     "d": "desc. 90s",
+     "t": "Desça fundo até sentir o peito alongar, pausa curta embaixo. Os halteres se aproximam em cima sem bater."
+    },
+    "k": "1"
+   },
+   {
+    "n": "Desenvolvimento de ombros",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Encosto vertical e lombar apoiada. Se sentir pressão na barriga ou precisar arquear as costas, reduza a carga. Solte o ar no esforço e nunca prenda a respiração.",
+     "rs": 75,
+     "v": "Na máquina, costas apoiadas"
+    },
+    "ele": {
+     "v": "Halteres, sentado (encosto 80–90°)",
+     "s": "3 × 8–12",
+     "d": "desc. 90s",
+     "t": "Desça até os halteres ficarem na altura das orelhas ou pouco abaixo. Cadência 2-0-1."
+    },
+    "k": "2"
+   },
+   {
+    "n": "Crucifixo (cross-over ou peck deck)",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Cotovelos levemente dobrados, peito aberto, movimento lento. Solte o ar no esforço e nunca prenda a respiração.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "2 × 12–15",
+     "d": "desc. 60s",
+     "t": "Segure 1s na abertura, com o peito alongado. Última série até a falha."
+    },
+    "k": "3"
+   },
+   {
+    "n": "Elevação lateral com halteres",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Halteres leves, suba até a altura do ombro sem encolher o pescoço.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Tronco levemente inclinado à frente; o cotovelo guia o movimento. 3s descendo."
+    },
+    "k": "4"
+   },
+   {
+    "n": "Tríceps na polia (corda)",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Cotovelos colados ao corpo, só o antebraço se move.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 60s",
+     "t": "Abra a corda embaixo e segure 1s. Volte até o antebraço passar dos 90°."
+    },
+    "k": "5"
+   },
+   {
+    "n": "Face pull (polia alta, corda)",
+    "ela": {
+     "s": "3 × 15",
+     "d": "no descanso dele",
+     "t": "Puxe a corda em direção aos olhos abrindo os cotovelos e girando os punhos para fora. É o principal corretivo para ombros projetados à frente."
+    },
+    "ele": {
+     "s": "2 × 15",
+     "d": "desc. 45s",
+     "t": "Protege o ombro para aguentar o volume de supino. Carga leve, contração no final."
+    },
+    "k": "6"
+   },
+   {
+    "n": "Anjo na parede",
+    "ela": {
+     "s": "2 × 10",
+     "d": "no descanso dele",
+     "t": "Cabeça, costas e lombar encostadas na parede. Deslize os braços para cima sem desencostar. Abre o peito e melhora a mobilidade torácica."
+    },
+    "k": "7"
+   }
+  ]
+ },
+ {
+  "id": "sex",
+  "dow": 5,
+  "chip": "Sex · B",
+  "sub": "Pernas",
+  "eyebrow": "Dia 2 · Sexta",
+  "title": "B · Inferiores",
+  "focus": "Quadríceps e glúteo",
+  "time": "≈ 50 min + cardio",
+  "note": "<b>Encaixe:</b> o Pallof e a prancha dela (7 e 8) são feitos nos descansos longos dele no agachamento e no búlgaro.",
+  "ex": [
+   {
+    "n": "Agachamento",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 90s",
+     "t": "Halter leve a moderado junto ao peito e pés um pouco mais afastados. Desça só até onde for confortável e suba soltando o ar. Se faltar equilíbrio, faça segurando num apoio.",
+     "rs": 90,
+     "v": "Goblet (halter junto ao peito)"
+    },
+    "ele": {
+     "v": "Livre com barra",
+     "s": "4 × 6–10",
+     "d": "desc. 2–3 min",
+     "t": "Cadência 3-1-1: 3s descendo, 1s de pausa no fundo, sobe forte. Desça abaixo do paralelo enquanto a lombar se mantiver neutra."
+    },
+    "k": "0"
+   },
+   {
+    "n": "Afundo",
+    "ela": {
+     "s": "2 × 10/perna",
+     "d": "desc. 75s",
+     "t": "Sempre com uma mão apoiada no espaldar ou na máquina, para não desequilibrar. Passo curto e tronco alto.",
+     "rs": 75,
+     "v": "Afundo estático segurando num apoio, sem carga ou com halter leve"
+    },
+    "ele": {
+     "v": "Búlgaro com halteres (pé de trás no banco)",
+     "s": "3 × 8–10/perna",
+     "d": "desc. 90s",
+     "t": "Passo longo e tronco levemente à frente para mais glúteo. Desça em 3s até alongar bem a frente do quadril de trás."
+    },
+    "k": "1"
+   },
+   {
+    "n": "Leg press 45°",
+    "ela": {
+     "s": "3 × 12–15",
+     "d": "desc. 90s",
+     "t": "Amplitude menor: pare antes de os joelhos se aproximarem da barriga. Expire ao empurrar. Quando a barriga crescer, trocamos este exercício.",
+     "rs": 90
+    },
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 90s–2 min",
+     "t": "Pés na largura do quadril, no meio da plataforma. Amplitude máxima sem o quadril sair do banco. Não trave os joelhos em cima."
+    },
+    "k": "2"
+   },
+   {
+    "n": "Cadeira extensora",
+    "ela": {
+     "s": "3 × 15",
+     "d": "desc. 60s",
+     "t": "Costas apoiadas, subida controlada, sem trancos.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 10–12 + drop-set na última",
+     "d": "desc. 60–90s",
+     "t": "Segure 1s em cima contraindo. Na última série, ao falhar, tire ~30% da carga e continue até falhar de novo."
+    },
+    "k": "3"
+   },
+   {
+    "n": "Glúteo na polia (coice)",
+    "k": "gluteo-polia",
+    "ela": {
+     "s": "3 × 12/perna",
+     "d": "desc. 60s",
+     "t": "Mãos apoiadas no aparelho e tronco quase vertical. Leve a perna para trás sem arquear a lombar.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 10–12/perna",
+     "d": "desc. 60s",
+     "t": "Segure 1s lá atrás apertando o glúteo e volte em 2–3s. Tronco parado: quem se move é só o quadril. Carga que permita controle total."
+    }
+   },
+   {
+    "n": "Panturrilha em pé",
+    "ela": {
+     "s": "3 × 15",
+     "d": "desc. 45s",
+     "t": "Segurando na máquina ou na parede para ter equilíbrio.",
+     "rs": 45,
+     "v": "Apoiada na máquina ou na parede"
+    },
+    "ele": {
+     "s": "3 × 10–15",
+     "d": "desc. 60s",
+     "t": "Pausa de 2s embaixo com a panturrilha alongada. Sem quicar."
+    },
+    "k": "5"
+   },
+   {
+    "n": "Pallof press (polia ou elástico)",
+    "ela": {
+     "s": "3 × 10/lado",
+     "d": "no descanso dele",
+     "t": "De lado para a polia, braços estendidos à frente. Não deixe o tronco girar e respire normalmente. Um dos exercícios de core mais seguros na gestação.",
+     "rs": 0
+    },
+    "k": "6"
+   },
+   {
+    "n": "Prancha frontal",
+    "ela": {
+     "s": "3 × 20–30s",
+     "d": "no descanso dele",
+     "t": "Mãos apoiadas no alto (banco alto ou espaldar), corpo em linha. Respire normalmente. Se aparecer um volume saltando no meio da barriga, pare e conte à obstetra.",
+     "rs": 0,
+     "v": "Prancha inclinada, mãos no banco alto ou no espaldar",
+     "nk": true,
+     "u": "s"
+    },
+    "k": "7"
+   }
+  ]
+ },
+ {
+  "id": "sab",
+  "dow": 6,
+  "chip": "Sáb · C",
+  "sub": "Puxar",
+  "eyebrow": "Dia 3 · Sábado",
+  "title": "C · Puxar",
+  "focus": "Costas, bíceps e posterior de ombro",
+  "time": "≈ 45 min + cardio",
+  "note": "<b>Dia da postura:</b> ela fecha com respiração diafragmática, prancha lateral e bird-dog (7, 8 e 9), um core seguro para a gestação.",
+  "ex": [
+   {
+    "n": "Puxada frontal (pulldown)",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Peito aberto, tronco quase vertical. Puxe até o alto do peito soltando o ar.",
+     "rs": 75
+    },
+    "ele": {
+     "s": "4 × 8–12",
+     "d": "desc. 90s–2 min",
+     "t": "Em cima, deixe os braços esticarem totalmente e as costas alongarem. Volta em 2–3s."
+    },
+    "k": "0"
+   },
+   {
+    "n": "Remada",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Sentada alta, sem apoiar a barriga em nada. Junte as escápulas e expire ao puxar.",
+     "rs": 75,
+     "v": "Remada baixa sentada na polia (triângulo)"
+    },
+    "ele": {
+     "v": "Curvada com barra",
+     "s": "3 × 8–10",
+     "d": "desc. 2 min",
+     "t": "Tronco a ~45°, lombar neutra, joelhos levemente dobrados. Puxe a barra em direção ao umbigo. Se a lombar cansar antes das costas, faça a versão com peito apoiado."
+    },
+    "k": "1"
+   },
+   {
+    "n": "Pullover na polia (braços estendidos)",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Costelas para baixo, braços quase retos, movimento lento.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 12",
+     "d": "desc. 60s",
+     "t": "Braços quase retos. Leve a barra das coxas até acima da cabeça, alongando bem o latíssimo."
+    },
+    "k": "2"
+   },
+   {
+    "n": "Crucifixo invertido (peck deck)",
+    "ela": {
+     "s": "3 × 15",
+     "d": "desc. 60s",
+     "t": "Fortalece o meio das costas e ajuda a postura. Se o apoio do peito incomodar a barriga, faça em pé na polia, com cabos cruzados.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Braços abrem em arco largo. Segure 1s atrás."
+    },
+    "k": "3"
+   },
+   {
+    "n": "Rosca direta (barra W)",
+    "ela": {
+     "s": "2 × 12–15",
+     "d": "desc. 60s",
+     "t": "Sem balançar o tronco. Glúteo e abdômen firmes, respiração solta.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 8–12",
+     "d": "desc. 60–90s",
+     "t": "Cotovelos fixos ao lado do corpo. 3s descendo até o braço estender todo."
+    },
+    "k": "4"
+   },
+   {
+    "n": "Rosca martelo",
+    "ele": {
+     "s": "2 × 10–12",
+     "d": "desc. 60s",
+     "t": "Pegada neutra: trabalha braquial e antebraço. Sem impulso."
+    },
+    "k": "5"
+   },
+   {
+    "n": "Respiração diafragmática com ativação do abdômen",
+    "ela": {
+     "s": "3 × 8 respirações",
+     "d": "no descanso dele",
+     "t": "Sentada, costas retas e mãos nas costelas. Puxe o ar abrindo as costelas para os lados. Ao soltar devagar, abrace a barriga levemente para dentro, como quem fecha um zíper. É a base do core na gestação.",
+     "rs": 0,
+     "nk": true,
+     "u": "reps"
+    },
+    "k": "respiracao-core"
+   },
+   {
+    "n": "Prancha lateral",
+    "ela": {
+     "s": "2 × 15–20s/lado",
+     "d": "no descanso dele",
+     "t": "Joelhos apoiados, corpo em linha e respiração solta.",
+     "rs": 0,
+     "v": "Com joelhos apoiados"
+    },
+    "k": "7"
+   },
+   {
+    "n": "Bird-dog",
+    "ela": {
+     "s": "2 × 6/lado (segura 5s)",
+     "d": "no descanso dele",
+     "t": "Em quatro apoios, estique braço e perna opostos sem girar o quadril. Movimento lento.",
+     "rs": 0
+    },
+    "k": "8"
+   },
+   {
+    "n": "Abdominal na polia (opcional)",
+    "ele": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Ajoelhado, enrole o tronco trazendo as costelas em direção ao quadril."
+    },
+    "k": "9"
+   }
+  ]
+ },
+ {
+  "id": "dom",
+  "dow": 0,
+  "chip": "Dom · FB1",
+  "sub": "Fullbody",
+  "eyebrow": "Dia 4 · Domingo",
+  "title": "Fullbody 1",
+  "focus": "Posterior de coxa, glúteo, peito e ombro",
+  "time": "≈ 50 min + cardio",
+  "note": "<b>Sem costas hoje:</b> foram treinadas ontem. O domingo repete peito e ombro (72h depois de quinta) e trabalha o quadril em dobradiça.",
+  "ex": [
+   {
+    "n": "Levantamento terra romeno (stiff)",
+    "ela": {
+     "s": "3 × 10–12",
+     "d": "desc. 90s",
+     "t": "Halteres leves. Empurre o quadril para trás com a coluna reta e desça só até o joelho. Suba soltando o ar.",
+     "rs": 90,
+     "v": "Com halteres leves, amplitude curta"
+    },
+    "ele": {
+     "v": "Com barra",
+     "s": "4 × 8–10",
+     "d": "desc. 2 min",
+     "t": "3s descendo até o máximo alongamento do posterior de coxa, lombar neutra. Não precisa tocar o chão."
+    },
+    "k": "0"
+   },
+   {
+    "n": "Mesa flexora",
+    "ela": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Na gestação, use a cadeira flexora sentada em vez da mesa, onde se deita de barriga para baixo.",
+     "rs": 60,
+     "v": "Cadeira flexora (sentada)"
+    },
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 60–90s",
+     "t": "Segure 1s com o joelho dobrado e volte em 3s."
+    },
+    "k": "1"
+   },
+   {
+    "n": "Empurrar inclinado",
+    "ela": {
+     "s": "3 × 10–12",
+     "d": "desc. 75s",
+     "t": "Mãos apoiadas bem alto, no espaldar ou na parede, corpo em linha. Expire ao empurrar.",
+     "rs": 75,
+     "v": "Flexão de braço na parede ou no espaldar"
+    },
+    "ele": {
+     "v": "Supino inclinado na máquina ou no Smith",
+     "s": "3 × 8–12",
+     "d": "desc. 90s",
+     "t": "Desça até alongar o peito, pausa curta, e suba sem travar os cotovelos."
+    },
+    "k": "2"
+   },
+   {
+    "n": "Cadeira abdutora",
+    "ela": {
+     "s": "3 × 15",
+     "d": "desc. 60s",
+     "t": "Movimento controlado. Fortalece o glúteo médio, que estabiliza a pelve na gestação.",
+     "rs": 60
+    },
+    "k": "3"
+   },
+   {
+    "n": "Elevação lateral na polia (unilateral)",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Carga leve, ombro longe da orelha.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Polia baixa com o cabo passando por trás do corpo: o deltoide trabalha mais alongado."
+    },
+    "k": "4"
+   },
+   {
+    "n": "Tríceps",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Em pé, cotovelos colados ao corpo.",
+     "rs": 60,
+     "v": "Polia com barra reta, em pé"
+    },
+    "ele": {
+     "v": "Francês na polia (corda acima da cabeça)",
+     "s": "3 × 10–12",
+     "d": "desc. 60s",
+     "t": "Tríceps na posição alongada estimula mais a cabeça longa. Costelas para baixo."
+    },
+    "k": "5"
+   },
+   {
+    "n": "Panturrilha sentado",
+    "ele": {
+     "s": "3 × 12–15",
+     "d": "desc. 60s",
+     "t": "Pausa de 2s embaixo, na posição alongada."
+    },
+    "k": "6"
+   },
+   {
+    "n": "Caminhada do fazendeiro",
+    "ela": {
+     "s": "3 × 30 m",
+     "d": "desc. 75s",
+     "t": "Halteres leves a moderados. Postura alta, passos curtos e respiração solta.",
+     "rs": 75,
+     "v": "Halteres leves a moderados"
+    },
+    "k": "7"
+   }
+  ]
+ },
+ {
+  "id": "seg",
+  "dow": 1,
+  "chip": "Seg · FB2",
+  "sub": "Fullbody",
+  "eyebrow": "Dia 5 · Segunda",
+  "title": "Fullbody 2",
+  "focus": "Costas, quadríceps e braços",
+  "time": "≈ 45 min + cardio",
+  "note": "<b>Sem peito hoje:</b> foi ontem. Costas voltam 48h depois de sábado. Ele pode fazer 5 e 6 em superset (alternando), com 60s de descanso após o par.",
+  "ex": [
+   {
+    "n": "Puxada vertical",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Peito em direção à barra, ombros longe das orelhas. Expire ao puxar.",
+     "rs": 75,
+     "v": "Puxada com triângulo (pegada neutra)"
+    },
+    "ele": {
+     "v": "Barra fixa (ou graviton)",
+     "s": "4 × 6–10",
+     "d": "desc. 2 min",
+     "t": "Desça até esticar os braços por completo. Passou de 10 reps em todas as séries? Acrescente carga com cinto ou halter entre os pés."
+    },
+    "k": "0"
+   },
+   {
+    "n": "Quadríceps",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 90s",
+     "t": "Pés bem afastados e pontas um pouco para fora, um halter seguro com as duas mãos entre as pernas. Desça devagar até onde for confortável e suba soltando o ar. A base larga dá estabilidade e deixa espaço para a barriga.",
+     "rs": 90,
+     "v": "Agachamento sumô com halter"
+    },
+    "ele": {
+     "v": "Agachamento hack (máquina)",
+     "s": "3 × 10–12",
+     "d": "desc. 2 min",
+     "t": "Pés mais baixos na plataforma para focar no quadríceps. 3s descendo, amplitude total."
+    },
+    "k": "1"
+   },
+   {
+    "n": "Remada sentada na máquina (pegada neutra)",
+    "ela": {
+     "s": "3 × 12",
+     "d": "desc. 75s",
+     "t": "Sente alta e puxe sem jogar o tronco para trás. Se o apoio do peito pressionar a barriga, use a remada baixa na polia.",
+     "rs": 75
+    },
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 90s",
+     "t": "Na volta, deixe as escápulas se afastarem para alongar as costas. Volta em 3s."
+    },
+    "k": "2"
+   },
+   {
+    "n": "Cadeira extensora",
+    "ela": {
+     "s": "2 × 15",
+     "d": "desc. 60s",
+     "t": "Controle total, sem trancos.",
+     "rs": 60
+    },
+    "ele": {
+     "s": "2 × 12–15",
+     "d": "desc. 60s",
+     "t": "Segure 1s em cima. Última série até a falha."
+    },
+    "k": "3"
+   },
+   {
+    "n": "Rosca inclinada com halteres",
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 60s (superset)",
+     "t": "Banco a 45°, braços pendurados atrás do corpo: bíceps trabalhando alongado."
+    },
+    "k": "4"
+   },
+   {
+    "n": "Tríceps testa (barra W)",
+    "ele": {
+     "s": "3 × 10–12",
+     "d": "desc. 60s (superset)",
+     "t": "Leve a barra para trás da cabeça, e não até a testa, para alongar mais o tríceps."
+    },
+    "k": "5"
+   },
+   {
+    "n": "Pallof press (polia ou elástico)",
+    "ela": {
+     "s": "3 × 10/lado",
+     "d": "no descanso dele",
+     "t": "De lado para a polia, braços estendidos à frente. Não deixe o tronco girar e respire normalmente.",
+     "rs": 0
+    },
+    "k": "pallof-seg"
+   },
+   {
+    "n": "Prancha lateral",
+    "ela": {
+     "s": "2 × 15–20s/lado",
+     "d": "no descanso dele",
+     "t": "Joelhos apoiados, corpo em linha e respiração solta.",
+     "rs": 0,
+     "v": "Com joelhos apoiados"
+    },
+    "k": "7"
+   }
+  ]
+ }
 ];
+const GEST_PATCH = {"qui": {"0": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Sentada, costas apoiadas no encosto. Carga que permita terminar com 3–4 repetições sobrando. Solte o ar no esforço e nunca prenda a respiração.", "rs": 75, "v": "Supino na máquina, sentada (chest press)"}}, "1": {"ela": {"s": "2 × 12", "d": "desc. 75s", "t": "Banco a 30–45°, nunca deitada reta. Halteres moderados e movimento controlado. Solte o ar no esforço e nunca prenda a respiração.", "rs": 75}}, "2": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Encosto vertical e lombar apoiada. Se sentir pressão na barriga ou precisar arquear as costas, reduza a carga. Solte o ar no esforço e nunca prenda a respiração.", "rs": 75, "v": "Na máquina, costas apoiadas"}}, "3": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Cotovelos levemente dobrados, peito aberto, movimento lento. Solte o ar no esforço e nunca prenda a respiração.", "rs": 60}}, "4": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Halteres leves, suba até a altura do ombro sem encolher o pescoço.", "rs": 60}}, "5": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Cotovelos colados ao corpo, só o antebraço se move.", "rs": 60}}}, "sex": {"0": {"ela": {"s": "3 × 12", "d": "desc. 90s", "t": "Halter leve a moderado junto ao peito e pés um pouco mais afastados. Desça só até onde for confortável e suba soltando o ar. Se faltar equilíbrio, faça segurando num apoio.", "rs": 90, "v": "Goblet (halter junto ao peito)"}}, "1": {"ela": {"s": "2 × 10/perna", "d": "desc. 75s", "t": "Sempre com uma mão apoiada no espaldar ou na máquina, para não desequilibrar. Passo curto e tronco alto.", "rs": 75, "v": "Afundo estático segurando num apoio, sem carga ou com halter leve"}}, "2": {"ela": {"s": "3 × 12–15", "d": "desc. 90s", "t": "Amplitude menor: pare antes de os joelhos se aproximarem da barriga. Expire ao empurrar. Quando a barriga crescer, trocamos este exercício.", "rs": 90}}, "3": {"ela": {"s": "3 × 15", "d": "desc. 60s", "t": "Costas apoiadas, subida controlada, sem trancos.", "rs": 60}}, "gluteo-polia": {"ela": {"s": "3 × 12/perna", "d": "desc. 60s", "t": "Mãos apoiadas no aparelho e tronco quase vertical. Leve a perna para trás sem arquear a lombar.", "rs": 60}}, "5": {"ela": {"s": "3 × 15", "d": "desc. 45s", "t": "Segurando na máquina ou na parede para ter equilíbrio.", "rs": 45, "v": "Apoiada na máquina ou na parede"}}, "6": {"ela": {"s": "3 × 10/lado", "d": "no descanso dele", "t": "De lado para a polia, braços estendidos à frente. Não deixe o tronco girar e respire normalmente. Um dos exercícios de core mais seguros na gestação.", "rs": 0}}, "7": {"ela": {"s": "3 × 20–30s", "d": "no descanso dele", "t": "Mãos apoiadas no alto (banco alto ou espaldar), corpo em linha. Respire normalmente. Se aparecer um volume saltando no meio da barriga, pare e conte à obstetra.", "rs": 0, "v": "Prancha inclinada, mãos no banco alto ou no espaldar", "nk": true, "u": "s"}}}, "sab": {"0": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Peito aberto, tronco quase vertical. Puxe até o alto do peito soltando o ar.", "rs": 75}}, "1": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Sentada alta, sem apoiar a barriga em nada. Junte as escápulas e expire ao puxar.", "rs": 75, "v": "Remada baixa sentada na polia (triângulo)"}}, "2": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Costelas para baixo, braços quase retos, movimento lento.", "rs": 60}}, "3": {"ela": {"s": "3 × 15", "d": "desc. 60s", "t": "Fortalece o meio das costas e ajuda a postura. Se o apoio do peito incomodar a barriga, faça em pé na polia, com cabos cruzados.", "rs": 60}}, "4": {"ela": {"s": "2 × 12–15", "d": "desc. 60s", "t": "Sem balançar o tronco. Glúteo e abdômen firmes, respiração solta.", "rs": 60}}, "6": {"n": "Respiração diafragmática com ativação do abdômen", "k": "respiracao-core", "ela": {"s": "3 × 8 respirações", "d": "no descanso dele", "t": "Sentada, costas retas e mãos nas costelas. Puxe o ar abrindo as costelas para os lados. Ao soltar devagar, abrace a barriga levemente para dentro, como quem fecha um zíper. É a base do core na gestação.", "rs": 0, "nk": true, "u": "reps"}}, "7": {"ela": {"s": "2 × 15–20s/lado", "d": "no descanso dele", "t": "Joelhos apoiados, corpo em linha e respiração solta.", "rs": 0, "v": "Com joelhos apoiados"}}, "8": {"ela": {"s": "2 × 6/lado (segura 5s)", "d": "no descanso dele", "t": "Em quatro apoios, estique braço e perna opostos sem girar o quadril. Movimento lento.", "rs": 0}}}, "dom": {"0": {"ela": {"s": "3 × 10–12", "d": "desc. 90s", "t": "Halteres leves. Empurre o quadril para trás com a coluna reta e desça só até o joelho. Suba soltando o ar.", "rs": 90, "v": "Com halteres leves, amplitude curta"}}, "1": {"ela": {"s": "3 × 12–15", "d": "desc. 60s", "t": "Na gestação, use a cadeira flexora sentada em vez da mesa, onde se deita de barriga para baixo.", "rs": 60, "v": "Cadeira flexora (sentada)"}}, "2": {"ela": {"s": "3 × 10–12", "d": "desc. 75s", "t": "Mãos apoiadas bem alto, no espaldar ou na parede, corpo em linha. Expire ao empurrar.", "rs": 75, "v": "Flexão de braço na parede ou no espaldar"}}, "3": {"ela": {"s": "3 × 15", "d": "desc. 60s", "t": "Movimento controlado. Fortalece o glúteo médio, que estabiliza a pelve na gestação.", "rs": 60}}, "4": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Carga leve, ombro longe da orelha.", "rs": 60}}, "5": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Em pé, cotovelos colados ao corpo.", "rs": 60, "v": "Polia com barra reta, em pé"}}, "7": {"ela": {"s": "3 × 30 m", "d": "desc. 75s", "t": "Halteres leves a moderados. Postura alta, passos curtos e respiração solta.", "rs": 75, "v": "Halteres leves a moderados"}}}, "seg": {"0": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Peito em direção à barra, ombros longe das orelhas. Expire ao puxar.", "rs": 75, "v": "Puxada com triângulo (pegada neutra)"}}, "1": {"ela": {"s": "3 × 12", "d": "desc. 90s", "t": "Pés bem afastados e pontas um pouco para fora, um halter seguro com as duas mãos entre as pernas. Desça devagar até onde for confortável e suba soltando o ar. A base larga dá estabilidade e deixa espaço para a barriga.", "rs": 90, "v": "Agachamento sumô com halter"}}, "2": {"ela": {"s": "3 × 12", "d": "desc. 75s", "t": "Sente alta e puxe sem jogar o tronco para trás. Se o apoio do peito pressionar a barriga, use a remada baixa na polia.", "rs": 75}}, "3": {"ela": {"s": "2 × 15", "d": "desc. 60s", "t": "Controle total, sem trancos.", "rs": 60}}, "6": {"n": "Pallof press (polia ou elástico)", "k": "pallof-seg", "ela": {"s": "3 × 10/lado", "d": "no descanso dele", "t": "De lado para a polia, braços estendidos à frente. Não deixe o tronco girar e respire normalmente.", "rs": 0}}, "7": {"ela": {"s": "2 × 15–20s/lado", "d": "no descanso dele", "t": "Joelhos apoiados, corpo em linha e respiração solta.", "rs": 0, "v": "Com joelhos apoiados"}}}};
 const aquecer = `<section class="view" id="v-aquecer" hidden>
   <div class="dayhead"><span class="eyebrow">Antes de todo treino</span><h2>Aquecimento e mobilidade</h2><p>Comecem juntos na bike e depois cada um segue o seu bloco. Só mobilidade dinâmica; alongamento parado e longo fica para o fim.</p></div>
   <div class="sec">
-    <div class="blk ela"><h4>Ela · coluna, core e torácica (≈ 10 min)</h4>
+    <div class="blk ela"><h4>Ela · gestação: mobilidade e respiração (≈ 10 min)</h4>
       <ol>
-        <li><b>Bike ou elíptico leve</b> · 3 min</li>
-        <li><b>Gato-camelo</b> · 8 lentas. Mova a coluna vértebra por vértebra, sem forçar.</li>
-        <li><b>Rotação torácica em 4 apoios</b> (mão na nuca) · 8/lado. Quadril parado; gire só o tronco, com os olhos seguindo o cotovelo.</li>
-        <li><b>Dead bug</b> · 2 × 8/lado. Lombar colada no chão; solte o ar ao estender.</li>
-        <li><b>Bird-dog</b> · 2 × 6/lado, segurando 3s. Quadril nivelado.</li>
-        <li><b>Prancha lateral com joelhos apoiados</b> · 2 × 20s/lado.</li>
-        <li><b>Ponte de glúteo</b> · 15. Aperte o glúteo em cima, costelas para baixo.</li>
-        <li><b>Anjo na parede</b> · 10. Costas e cabeça encostadas; deslize os braços sem desencostar.</li>
+        <li><b>Bike ou elíptico leve</b> · 5 min, num ritmo em que dá para conversar.</li>
+        <li><b>Gato-camelo</b> · 8 lentas, sem forçar.</li>
+        <li><b>Rotação torácica em 4 apoios</b> · 6/lado. Quadril parado; gire só o tronco.</li>
+        <li><b>Respiração diafragmática sentada</b> · 8 respirações. Costelas abrem para os lados ao puxar o ar; barriga abraça levemente ao soltar.</li>
+        <li><b>Bird-dog</b> · 2 × 5/lado, lento.</li>
+        <li><b>Ponte de glúteo</b> · 12. Só até o fim do 1º trimestre; depois, a obstetra costuma orientar evitar ficar deitada de barriga para cima.</li>
+        <li><b>Anjo na parede</b> · 10. Costas e cabeça encostadas.</li>
       </ol></div>
     <div class="blk ele"><h4>Ele · amplitude para hipertrofia (≈ 8 min)</h4>
       <p><b>Bike ou elíptico leve</b> · 3–5 min</p>
@@ -523,13 +1038,14 @@ const aquecer = `<section class="view" id="v-aquecer" hidden>
 const cardio = `<section class="view" id="v-cardio" hidden>
   <div class="dayhead"><span class="eyebrow">Sempre depois da musculação</span><h2>Protocolo de cardio</h2><p>Cardio depois dos pesos preserva a força do treino. A intensidade é medida pelo teste da fala.</p></div>
   <div class="sec">
-    <div class="blk ela"><h4>Ela · máxima queima com baixo impacto</h4>
+    <div class="blk ela"><h4>Ela · gestação: moderado e sem impacto</h4>
       <ul>
-        <li><b>Sex, Sáb e Dom:</b> 15–20 min contínuo, em zona 2 (consegue falar frases curtas, mas não cantar). Esteira com inclinação de 6–10% a 5–6 km/h <i>sem segurar no corrimão</i>, bike ou elíptico.</li>
-        <li><b>Qui e Seg:</b> intervalado na bike: 8 × (30s forte + 60s leve), ≈ 12 min com 2 min de volta à calma. No “forte”, fala no máximo 2–3 palavras.</li>
-        <li><b>Ter e Qua (descanso):</b> caminhada ao ar livre de 30–40 min. É recuperação ativa, não treino.</li>
-        <li><b>Todos os dias:</b> meta de 8–10 mil passos. É o que mais soma gasto calórico ao longo da semana.</li>
-        <li><b>Evite por enquanto:</b> corrida intensa, saltos e remo ergômetro pesado. Impacto e flexão repetida da coluna não compensam no início.</li>
+        <li><b>Depois da musculação:</b> 15–25 min de bike, elíptico ou caminhada na esteira, em ritmo moderado: dá para conversar frases inteiras. Se faltar fôlego para falar, diminua.</li>
+        <li><b>Sem intervalado forte</b>, sem corrida intensa, saltos ou exercícios com risco de queda.</li>
+        <li><b>Ter e Qua:</b> caminhada leve de 20–40 min, se ela estiver bem disposta.</li>
+        <li><b>Referência geral:</b> cerca de 150 min por semana de atividade moderada, somando tudo, como recomendam as diretrizes de saúde para gestantes. A obstetra pode ajustar.</li>
+        <li><b>Calor e água:</b> treine em local ventilado, beba água antes, durante e depois, e evite treinar com muito calor.</li>
+        <li><b>Respeite o corpo:</b> no 1º trimestre, cansaço e enjoo são comuns. Em dias assim, vale um treino mais curto ou só a caminhada.</li>
       </ul></div>
     <div class="blk ele"><h4>Ele · saúde cardiovascular sem roubar massa</h4>
       <ul>
@@ -551,21 +1067,23 @@ const logica = `<section class="view" id="v-logica" hidden>
       <ul>
         <li><b>Cada músculo é treinado 2× por semana</b>, a frequência que melhor funciona para hipertrofia e para manter massa magra no emagrecimento.</li>
         <li><b>Nenhum músculo é treinado pesado dois dias seguidos.</b> O Fullbody 1 (dom) pula costas, treinadas no sábado. O Fullbody 2 (seg) pula peito, treinado no domingo.</li>
-        <li><b>Pernas em dom e seg têm padrões diferentes:</b> domingo é quadril (stiff, flexora); segunda é joelho (hack, step-up). Isso permite recuperar um enquanto treina o outro.</li>
+        <li><b>Pernas em dom e seg têm padrões diferentes:</b> domingo é quadril (stiff, flexora); segunda é joelho (hack, agachamento sumô). Isso permite recuperar um enquanto treina o outro.</li>
         <li><b>Quinta abre com empurrar e as pernas pesadas ficam na sexta</b>, 4 dias depois das pernas de segunda, com recuperação completa.</li>
       </ul></div>
     <div class="blk"><h4>Como treinar juntos</h4>
       <ul>
         <li>Mesma máquina ou mesmo padrão de movimento. Muda <b>carga, repetições, descanso</b> e, às vezes, a <b>variação</b>: barra para ele; halter, máquina ou peito apoiado para ela, com menos carga direto na coluna.</li>
-        <li><b>Ele:</b> 3–4 séries de 6–12, descanso de 90s a 3 min. <b>Ela:</b> 2–4 séries de 12–15, descanso de 45–60s.</li>
+        <li><b>Ele:</b> 3–4 séries de 6–12, descanso de 90s a 3 min. <b>Ela (gestação):</b> 2–3 séries de 10–15, descanso de 60–90s, intensidade moderada.</li>
         <li><b>Encaixe:</b> durante os descansos maiores dele, ela faz o core e os exercícios posturais do dia. Assim os dois terminam juntos, em 45–50 min de musculação.</li>
       </ul></div>
-    <div class="blk ela"><h4>Regras dela</h4>
+    <div class="blk ela"><h4>Regras dela na gestação</h4>
       <ul>
-        <li><b>Técnica antes de carga.</b> Termine cada série com 2–3 repetições “sobrando”.</li>
-        <li>Coluna neutra, costelas para baixo e abdômen firme em todos os exercícios em pé.</li>
-        <li>Progrida primeiro nas repetições (até 15) e depois na carga.</li>
-        <li>Pare e procure um fisioterapeuta se sentir dor que irradia para a perna, formigamento ou dor que piora durante o exercício. Se você já tem um diagnóstico de coluna (hérnia, escoliose, protrusão), valide os exercícios com o fisioterapeuta.</li>
+        <li><b>Antes de tudo, converse com a obstetra</b> sobre continuar treinando e leve este plano para ela ver. Ela pode liberar, ajustar ou restringir conforme a gestação.</li>
+        <li><b>Intensidade moderada:</b> termine cada série com 3–4 repetições sobrando e sem perder a capacidade de falar. Não é fase de bater recordes.</li>
+        <li><b>Respiração:</b> solte o ar no esforço e nunca prenda a respiração para levantar peso.</li>
+        <li><b>Posições:</b> prefira sentada, em pé ou inclinada. Evite ficar muito tempo deitada de barriga para cima (principalmente depois do 1º trimestre) ou de barriga para baixo, e exercícios com risco de queda.</li>
+        <li><b>Abdômen:</b> nada de abdominais de flexão (tipo “abdominal tradicional”). O core é trabalhado com respiração, Pallof, prancha inclinada e bird-dog.</li>
+        <li><b>Pare o treino e procure a obstetra</b> se houver sangramento, perda de líquido, dor ou cólica na barriga, contrações, tontura ou desmaio, dor no peito, falta de ar antes do esforço, dor de cabeça forte, dor ou inchaço na panturrilha, ou fraqueza muscular.</li>
       </ul></div>
     <div class="blk ele"><h4>Regras dele</h4>
       <ul>
@@ -576,7 +1094,7 @@ const logica = `<section class="view" id="v-logica" hidden>
       </ul></div>
     <div class="blk"><h4>O que decide o resultado fora da academia</h4>
       <ul>
-        <li><b>Ela:</b> déficit calórico moderado (cerca de 300–500 kcal/dia) e proteína alta, por volta de 1,6–2,0 g/kg (≈ 125–155 g/dia). Perder 0,5–1% do peso por semana é um bom ritmo.</li>
+        <li><b>Ela (gestação):</b> sem déficit calórico e sem meta de emagrecer. Alimentação, suplementos (como o ácido fólico) e o ganho de peso adequado seguem as orientações da obstetra e da nutricionista do pré-natal.</li>
         <li><b>Ele:</b> leve superávit (cerca de 250–350 kcal/dia) e proteína de 1,6–2,2 g/kg (≈ 120–160 g/dia). Ganhar 0,25–0,5% do peso por semana indica ganho de massa com pouca gordura.</li>
         <li>Sono de 7–9 h para os dois. Para ajustar os números, o ideal é acompanhamento com nutricionista.</li>
       </ul></div>
@@ -1377,6 +1895,7 @@ function renderHome(){
   const pw = P.map(q=>{ const w = pesos(q), l = w[w.length-1]; return `<div class="pw ${q}"><small>${who(q)}</small><b>${l?nf.format(l.kg)+" kg":"–"}</b></div>`; }).join("");
   el.innerHTML = `
     <div class="greet"><h2>${hi}${first}</h2><p>${dateTxt}</p></div>
+    ${gestCard()}
     ${today}
     <div class="blk"><h4>Esta semana</h4><div class="wk five" style="grid-template-columns:repeat(${DAYS.length},minmax(0,1fr))">${week}</div></div>
     <div class="stats"><div><b>${nMonth}</b><small>treinos no mês</small></div><div><b>${streak}</b><small>${streak===1?"semana seguida":"semanas seguidas"}</small></div><div><b>${wVol?nf.format(Math.round(wVol/100)/10)+"t":"–"}</b><small>volume da semana</small></div></div>
@@ -1483,11 +2002,36 @@ function applyPlanFrom(d){
   catch(e){ DAYS = prepDays(JSON.parse(JSON.stringify(DEFAULT_DAYS))); }
   buildViews(); show(currentView);
 }
-function savePlan(days, msg){
-  docs.plan = {type:"plan", date:"9999-12-31", days:sanitizeDays(days), updatedAt:Date.now(), by: me ? me.uid : null};
+function savePlan(days, msg, gest){
+  const g = gest===true || !docs.plan || !!docs.plan.gest;
+  docs.plan = {type:"plan", date:"9999-12-31", days:sanitizeDays(days), updatedAt:Date.now(), by: me ? me.uid : null, gest: g};
   persistLocal(); queueWrite("plan"); applyPlanFrom(docs); refresh();
   if(msg) toast(msg);
 }
+
+/* ---------- Plano de gestação dela ---------- */
+const needsGest = ()=> !!(docs.plan && docs.plan.type==="plan" && !docs.plan.gest);
+function applyGest(){
+  const days = sanitizeDays(DAYS);
+  let n = 0;
+  days.forEach(d=>{
+    const pd = GEST_PATCH[d.id]; if(!pd) return;
+    const dd = DEFAULT_DAYS.find(x=>x.id===d.id);
+    if(d.id==="sab" && dd && /McGill/.test(d.note||"")) d.note = dd.note;
+    d.ex.forEach(e=>{
+      const pt = pd[e.k]; if(!pt || !e.ela) return;
+      if(pt.n) e.n = pt.n;
+      if(pt.k) e.k = pt.k;
+      e.ela = JSON.parse(JSON.stringify(pt.ela));
+      n++;
+    });
+  });
+  savePlan(days, n ? "Plano de gestação ativado" : "Plano de gestação ativado (sem exercícios para trocar)", true);
+}
+const gestCard = ()=> needsGest() ? `<div class="blk gestcard"><h4>Plano de gestação dela</h4>
+  <p>O treino dela foi adaptado para a gestação: intensidade moderada, posições seguras, core sem abdominais de flexão e cardio sem impacto. O treino dele não muda.</p>
+  <button class="cta" data-gest>Ativar plano de gestação</button></div>` : "";
+document.addEventListener("click", e=>{ if(e.target.closest("[data-gest]")){ applyGest(); } });
 
 /* ---------- Tela Meu plano ---------- */
 const planView = `<section class="view" id="v-plano" hidden>
@@ -1501,6 +2045,7 @@ function renderPlan(){
   const origin = pl ? `Alterado em ${new Date(pl.updatedAt).toLocaleDateString("pt-BR")}` : "Plano original montado no chat";
   const rows = DAYS.map(d=>`<div class="row"><div class="l"><b>${esc(d.chip)} · ${esc(d.title.replace(/^[A-Z]\s*·\s*/,""))}</b><small>${d.ex.length} exercícios · ${esc(d.focus)}</small></div><div class="r"><button class="cta sm alt" data-edit="${d.id}">Editar</button></div></div>`).join("");
   el.innerHTML = `
+    ${gestCard()}
     <div class="blk"><h4>Treino ativo</h4><p class="small">${origin}</p><div class="rows">${rows}</div></div>
     <div class="blk"><h4>Trocar de treino</h4><p>Peça um treino novo aqui no chat do Claude. Ele te envia um código: toque em <b>Importar treino</b>, cole o código e confira a prévia antes de ativar.</p><button class="cta" data-import>Importar treino</button></div>
     <div class="blk"><h4>Pedir um ajuste</h4><p>Copie o treino atual e cole no chat do Claude junto com o que você quer mudar. Ele devolve o código já ajustado para importar.</p><button class="cta alt" data-export>Copiar treino atual</button></div>
@@ -1687,7 +2232,7 @@ document.addEventListener("click", e=>{
   if(t.closest("[data-imp-apply]")){ if(importDraft){ savePlan(importDraft, "Treino importado e ativado"); importDraft = null; closeSheet(); show("home"); } return; }
   if(t.closest("[data-export]")){ copyPlan(); return; }
   const rs = t.closest("[data-restore]");
-  if(rs){ if(restoreArm){ restoreArm = false; savePlan(JSON.parse(JSON.stringify(DEFAULT_DAYS)), "Plano original restaurado"); } else { restoreArm = true; renderPlan(); setTimeout(()=>{ restoreArm = false; renderPlan(); }, 3000); } return; }
+  if(rs){ if(restoreArm){ restoreArm = false; savePlan(JSON.parse(JSON.stringify(DEFAULT_DAYS)), "Plano original restaurado", true); } else { restoreArm = true; renderPlan(); setTimeout(()=>{ restoreArm = false; renderPlan(); }, 3000); } return; }
   const nb = t.closest("[data-note]"); if(nb){ openNote(nb.dataset.note); return; }
   const ns = t.closest("[data-note-save]"); if(ns){ noteSet(ns.dataset.noteSave, val("note-text").trim().slice(0,300)); closeSheet(); toast("Anotação salva"); return; }
 });

@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String version() { return "4.3"; }
+        public String version() { return "4.5"; }
     }
 
     @Override
