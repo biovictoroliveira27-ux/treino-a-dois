@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takes SYNTAX</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Takes rápidos (9:16) para o vídeo "o que significa SYNTAX".
+// 5 cenas em sequência; cada uma vira um clipe separado (ver render.mjs / CENAS).
+// render(t) é determinística: serve para tocar no navegador e para gerar o vídeo.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const SANS = 'Inter, "DejaVu Sans", Arial, sans-serif';
+const DISP = '"Inter Display", Inter, "DejaVu Sans", sans-serif';
+const SERIF = '"DejaVu Serif", Georgia, serif';
+const MONO = '"JetBrains Mono", "DejaVu Sans Mono", monospace';
+const COL = { bg: '#0c0f1e', bg2: '#151a33', ink: '#f6f0e3', mute: '#8b91ab', amb: '#ffc23d', cor: '#ff5a5f', teal: '#3ed1b5', line: 'rgba(246,240,227,.07)' };
+
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eBack = x => { const c = 1.70158, d = c + 1; return 1 + d * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const eElastic = x => x <= 0 ? 0 : x >= 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x * 10 - .75) * (2 * Math.PI / 3)) + 1;
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- cenas: [início, duração] ----------
+const CENAS = [
+  { nome: '1-syntax-significa-sintaxe', d: 2.8, f: cena1 },
+  { nome: '2-estruturacao-dos-textos', d: 3.4, f: cena2 },
+  { nome: '3-organizacao-teoria-pratica', d: 4.4, f: cena3 },
+  { nome: '4-da-sintaxe-ao-curso', d: 3.6, f: cena4 },
+  { nome: '5-ao-longo-do-ano', d: 6.0, f: cena5 },
+];
+let acc = 0; for (const c of CENAS) { c.a = acc; acc += c.d; }
+const DUR = acc;
+
+// ---------- utilidades de desenho ----------
+function font(px, w = 800, fam = SANS) { ctx.font = `${w} ${px}px ${fam}`; }
+function text(s, x, y, { px = 60, w = 800, fam = SANS, col = COL.ink, align = 'center', alpha = 1, base = 'middle', track = 0 } = {}) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha *= alpha; font(px, w, fam); ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = base;
+  if (track) ctx.letterSpacing = track + 'px';
+  ctx.fillText(s, x, y); ctx.restore();
+}
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function withT(x, y, s, rot, a, fn) { if (a <= 0 || s <= 0) return; ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s); ctx.globalAlpha *= a; fn(); ctx.restore(); }
+function measure(s, px, w = 800, fam = SANS) { font(px, w, fam); return ctx.measureText(s).width; }
+function label(s, x, y, a, col = COL.mute) { text(s.toUpperCase(), x, y, { px: 30, w: 700, col, alpha: a, track: 8 }); }
+function check(x, y, r, k, col = COL.teal) {
+  if (k <= 0) return;
+  ctx.save(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r * eBack(clamp(k * 1.6)), 0, Math.PI * 2); ctx.fill();
+  const m = clamp((k - .35) / .65);
+  ctx.strokeStyle = COL.bg; ctx.lineWidth = r * .28; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const p = [[x - r * .45, y + r * .02], [x - r * .12, y + r * .35], [x + r * .48, y - r * .32]];
+  ctx.beginPath(); ctx.moveTo(...p[0]);
+  if (m < .4) ctx.lineTo(lerp(p[0][0], p[1][0], m / .4), lerp(p[0][1], p[1][1], m / .4));
+  else { ctx.lineTo(...p[1]); const n = (m - .4) / .6; ctx.lineTo(lerp(p[1][0], p[2][0], n), lerp(p[1][1], p[2][1], n)); }
+  ctx.stroke(); ctx.restore();
+}
+
+// fundo vivo: grade em perspectiva leve + pontos que derivam
+const R0 = rng(11);
+const DOTS = Array.from({ length: 70 }, () => ({ x: R0() * W, y: R0() * H, r: 1 + R0() * 2.5, v: 8 + R0() * 22, a: .08 + R0() * .2 }));
+function fundo(t, tint = COL.amb) {
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, COL.bg2); g.addColorStop(1, COL.bg);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const off = (t * 30) % 90;
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 2;
+  for (let x = -90 + off; x < W + 90; x += 90) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = -90 + off; y < H + 90; y += 90) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  const rg = ctx.createRadialGradient(W / 2, H * .45, 50, W / 2, H * .45, 900);
+  rg.addColorStop(0, tint + '22'); rg.addColorStop(1, tint + '00'); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+  for (const d of DOTS) { ctx.fillStyle = `rgba(246,240,227,${d.a})`; ctx.beginPath(); ctx.arc(d.x, (d.y - t * d.v + H * 10) % H, d.r, 0, Math.PI * 2); ctx.fill(); }
+  const vg = ctx.createRadialGradient(W / 2, H / 2, 600, W / 2, H / 2, 1250);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+// entrada da cena: flash/zoom curto para o corte ficar "punchy"
+function entrada(u) { const k = prog(u, 0, .22); if (k < 1) { ctx.fillStyle = `rgba(255,194,61,${.35 * (1 - k)})`; ctx.fillRect(0, 0, W, H); } }
+
+// ================= CENA 1: SYNTAX = sintaxe =================
+function cena1(u) {
+  fundo(u, COL.amb);
+  const word = 'SYNTAX', px = 210;
+  const up = eInOut(prog(u, .95, 1.35));
+  const cy = lerp(H * .44, 560, up), sc = lerp(1, .62, up);
+  font(px, 900, DISP);
+  const ws = [...word].map(ch => ctx.measureText(ch).width), tot = ws.reduce((a, b) => a + b, 0) + 10 * (word.length - 1);
+  let x = W / 2 - tot * sc / 2;
+  [...word].forEach((ch, i) => {
+    const k = prog(u, .05 + i * .07, .45 + i * .07);
+    const y = cy - (1 - eBack(k)) * 260;
+    withT(x + ws[i] * sc / 2, y, sc * (0.6 + .4 * eBack(k)), (1 - eOut(k)) * (i % 2 ? .4 : -.4), clamp(k * 3), () => text(ch, 0, 0, { px, w: 900, fam: DISP }));
+    x += (ws[i] + 10) * sc;
+  });
+  // "significa"
+  const k2 = prog(u, 1.15, 1.45);
+  text('significa', W / 2, 720, { px: 48, w: 500, col: COL.mute, alpha: eOut(k2), fam: SANS });
+  // seta
+  const ka = eOut(prog(u, 1.2, 1.5));
+  if (ka > 0) { ctx.save(); ctx.strokeStyle = COL.amb; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(W / 2, 770); ctx.lineTo(W / 2, 770 + 90 * ka); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W / 2 - 22, 838 + 22 * ka); ctx.lineTo(W / 2, 860 * ka + 770 * (1 - ka) + 0); ctx.lineTo(W / 2 + 22, 838 + 22 * ka); ctx.globalAlpha = ka; ctx.stroke(); ctx.restore(); }
+  // "sintaxe" digitando
+  const s = 'sintaxe', n = Math.floor(clamp((u - 1.4) / .4) * s.length + .001);
+  const typed = s.slice(0, n);
+  if (n > 0) {
+    const wpx = 190; const tw = measure(s, wpx, 700, SERIF);
+    text(typed, W / 2 - tw / 2, 990, { px: wpx, w: 700, fam: SERIF, col: COL.amb, align: 'left' });
+    if (n < s.length || Math.floor(u * 3) % 2 === 0) { const cx = W / 2 - tw / 2 + measure(typed, wpx, 700, SERIF) + 8; ctx.fillStyle = COL.amb; ctx.fillRect(cx, 910, 8, 150); }
+  }
+  // cartão de dicionário
+  const kc = eOut(prog(u, 1.85, 2.3));
+  withT(W / 2, 1360 + (1 - kc) * 120, 1, 0, kc, () => {
+    ctx.fillStyle = 'rgba(246,240,227,.06)'; ctx.strokeStyle = 'rgba(246,240,227,.18)'; ctx.lineWidth = 2;
+    rrect(-430, -190, 860, 380, 32); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = COL.amb; ctx.fillRect(-430, -190, 12, 380);
+    text('sin·ta·xe', -370, -110, { px: 58, w: 700, fam: SERIF, align: 'left' });
+    text('s.f.', 360, -110, { px: 34, w: 400, fam: MONO, col: COL.mute, align: 'right' });
+    text('do grego sýntaxis:', -370, -10, { px: 40, w: 400, col: COL.mute, align: 'left' });
+    text('“ordenação, arranjo”', -370, 60, { px: 50, w: 700, align: 'left' });
+    // sublinhado que se desenha
+    const ku = eOut(prog(u, 2.3, 2.65)); ctx.fillStyle = COL.amb; ctx.fillRect(-370, 100, 540 * ku, 7);
+  });
+  entrada(u);
+}
+
+// ================= CENA 2: estruturação dos textos =================
+const FRASE = [['A', 'sintaxe', 'organiza'], ['as', 'ideias', 'do', 'texto']];
+const R2 = rng(5);
+const CHIPS = FRASE.flatMap((ln, li) => ln.map((w, wi) => ({ w, li, wi, sx: 120 + R2() * 840, sy: 380 + R2() * 1100, sr: (R2() - .5) * 1.1, ph: R2() * 6 })));
+function cena2(u) {
+  fundo(u, COL.teal);
+  label('estrutura do texto', W / 2, 220, eOut(prog(u, 0, .3)));
+  const px = 74, gap = 22, padX = 34, hCh = 120;
+  // posições finais
+  const lines = FRASE.map(ln => { const ws = ln.map(w => measure(w, px, 800) + padX * 2); return { ws, tot: ws.reduce((a, b) => a + b, 0) + gap * (ln.length - 1) }; });
+  const snap = prog(u, .75, 1.45);
+  const lift = eInOut(prog(u, 1.75, 2.15));
+  const baseY = lerp(H * .44, 470, lift), lineH = hCh + 26, scl = lerp(1, .78, lift);
+  for (const c of CHIPS) {
+    const L = lines[c.li]; let x0 = W / 2 - L.tot / 2; for (let i = 0; i < c.wi; i++) x0 += L.ws[i] + gap;
+    const tx = W / 2 + (x0 + L.ws[c.wi] / 2 - W / 2) * scl, ty = baseY + (c.li - .5) * lineH * scl;
+    const kk = eBack(clamp((snap - c.wi * .04 - c.li * .08) / .8));
+    const fx = c.sx + Math.sin(u * 2 + c.ph) * 20, fy = c.sy + Math.cos(u * 1.7 + c.ph) * 20;
+    const x = lerp(fx, tx, kk), y = lerp(fy, ty, kk), r = lerp(c.sr, 0, clamp(kk));
+    const a = eOut(prog(u, c.ph * .03, c.ph * .03 + .25));
+    const done = snap >= 1;
+    withT(x, y, scl * (.6 + .4 * eOut(prog(u, c.ph * .03, c.ph * .03 + .3))), r, a, () => {
+      const ww = L.ws[c.wi];
+      const isKey = c.w === 'sintaxe' || c.w === 'organiza';
+      ctx.fillStyle = done && isKey ? COL.amb : 'rgba(246,240,227,.1)';
+      ctx.strokeStyle = 'rgba(246,240,227,.3)'; ctx.lineWidth = 2;
+      rrect(-ww / 2, -hCh / 2, ww, hCh, 26); ctx.fill(); if (!(done && isKey)) ctx.stroke();
+      text(c.w, 0, 4, { px, w: 800, col: done && isKey ? COL.bg : COL.ink });
+    });
+  }
+  // blocos da redação
+  const B = [['Introdução', COL.amb, 2], ['Desenvolvimento', COL.teal, 4], ['Conclusão', COL.cor, 2]];
+  let y = 820;
+  B.forEach(([nome, col, nl], i) => {
+    const k = prog(u, 2.0 + i * .28, 2.45 + i * .28);
+    const hB = 70 + nl * 48;
+    withT(W / 2, y + hB / 2 + (1 - eOut(k)) * 80, 1, 0, eOut(k), () => {
+      ctx.fillStyle = 'rgba(246,240,227,.05)'; rrect(-430, -hB / 2, 860, hB, 24); ctx.fill();
+      ctx.fillStyle = col; rrect(-430, -hB / 2, 14, hB, 7); ctx.fill();
+      text(nome, -390, -hB / 2 + 42, { px: 36, w: 800, col, align: 'left' });
+      for (let l = 0; l < nl; l++) {
+        const kl = eOut(prog(u, 2.25 + i * .28 + l * .08, 2.7 + i * .28 + l * .08));
+        const full = l === nl - 1 ? 480 : 780;
+        ctx.fillStyle = 'rgba(246,240,227,.22)'; rrect(-390, -hB / 2 + 78 + l * 48, full * kl, 16, 8); ctx.fill();
+      }
+    });
+    y += hB + 28;
+  });
+  entrada(u);
+}
+
+// ================= CENA 3: organização (teoria + prática) =================
+const AULAS = ['Coesão', 'Coerência', 'Argumentação', 'Repertório', 'Gramática', 'Proposta'];
+function cena3(u) {
+  fundo(u, COL.amb);
+  text('ORGANIZAÇÃO', W / 2, 200, { px: 92, w: 900, fam: DISP, alpha: eOut(prog(u, 0, .3)), track: 4 });
+  const ku = eOut(prog(u, .15, .5)); ctx.fillStyle = COL.amb; ctx.fillRect(W / 2 - 200 * ku, 262, 400 * ku, 8);
+  // --- aulas teóricas
+  label('aulas teóricas', W / 2, 360, eOut(prog(u, .25, .55)), COL.amb);
+  const cw = 300, ch = 150, gx = 28, gy = 28, ox = W / 2 - (cw * 3 + gx * 2) / 2, oy = 410;
+  AULAS.forEach((nome, i) => {
+    const r = Math.floor(i / 3), c = i % 3, k = prog(u, .35 + i * .12, .85 + i * .12);
+    const x = ox + c * (cw + gx) + cw / 2, y = oy + r * (ch + gy) + ch / 2;
+    withT(x, y - (1 - eBack(k)) * 160, .7 + .3 * eBack(k), (1 - eOut(k)) * (c - 1) * .3, clamp(k * 2.5), () => {
+      ctx.fillStyle = 'rgba(246,240,227,.08)'; ctx.strokeStyle = 'rgba(246,240,227,.2)'; ctx.lineWidth = 2;
+      rrect(-cw / 2, -ch / 2, cw, ch, 22); ctx.fill(); ctx.stroke();
+      text(String(i + 1).padStart(2, '0'), -cw / 2 + 26, -ch / 2 + 40, { px: 28, w: 600, fam: MONO, col: COL.amb, align: 'left' });
+      // ícone play
+      ctx.fillStyle = 'rgba(246,240,227,.35)'; ctx.beginPath(); ctx.moveTo(cw / 2 - 48, -ch / 2 + 26); ctx.lineTo(cw / 2 - 26, -ch / 2 + 40); ctx.lineTo(cw / 2 - 48, -ch / 2 + 54); ctx.fill();
+      text(nome, -cw / 2 + 26, 30, { px: nome.length > 10 ? 31 : 40, w: 800, align: 'left' });
+    });
+  });
+  // --- prática de cada aluno
+  const top2 = 900;
+  label('prática de cada aluno', W / 2, top2 + 20, eOut(prog(u, 1.7, 2.0)), COL.teal);
+  const steps = ['Estudar', 'Escrever', 'Revisar', 'Evoluir'];
+  const px0 = 170, px1 = W - 170, py = top2 + 190;
+  const kl = eInOut(prog(u, 1.9, 3.4));
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(246,240,227,.15)'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(px0, py); ctx.lineTo(px1, py); ctx.stroke();
+  ctx.strokeStyle = COL.teal; ctx.beginPath(); ctx.moveTo(px0, py); ctx.lineTo(lerp(px0, px1, kl), py); ctx.stroke(); ctx.restore();
+  steps.forEach((s, i) => {
+    const x = lerp(px0, px1, i / 3), on = kl >= i / 3 - .001;
+    const kk = clamp((kl - i / 3) * 6 + (on ? .01 : 0));
+    const a = eOut(prog(u, 1.8 + i * .08, 2.1 + i * .08));
+    withT(x, py, 1, 0, a, () => {
+      ctx.fillStyle = COL.bg2; ctx.strokeStyle = on ? COL.teal : 'rgba(246,240,227,.3)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      check(0, 0, 32, kk);
+      text(s, 0, 88, { px: 36, w: 700, col: on ? COL.ink : COL.mute });
+    });
+  });
+  // gráfico de evolução
+  const gx0 = 150, gy0 = top2 + 690, gw = W - 300, gh = 330;
+  const kg = eOut(prog(u, 2.3, 2.6));
+  if (kg > 0) {
+    ctx.save(); ctx.globalAlpha = kg;
+    ctx.fillStyle = 'rgba(246,240,227,.05)'; rrect(gx0 - 40, gy0 - gh - 60, gw + 80, gh + 110, 28); ctx.fill();
+    text('evolução', gx0, gy0 - gh - 18, { px: 28, w: 700, col: COL.mute, align: 'left', track: 4 });
+    const pts = [.18, .28, .25, .42, .5, .47, .64, .72, .88];
+    const kd = eInOut(prog(u, 2.5, 4.0)), nn = (pts.length - 1) * kd;
+    ctx.beginPath();
+    for (let i = 0; i <= Math.ceil(nn); i++) {
+      const j = Math.min(i, nn), i0 = Math.floor(j), f = j - i0;
+      const v = lerp(pts[i0], pts[Math.min(i0 + 1, pts.length - 1)], f);
+      const x = gx0 + gw * j / (pts.length - 1), y = gy0 - gh * v;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.strokeStyle = COL.teal; ctx.lineWidth = 9; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+    const i0 = Math.floor(nn), f = nn - i0, v = lerp(pts[i0], pts[Math.min(i0 + 1, pts.length - 1)], f);
+    const hx = gx0 + gw * nn / (pts.length - 1), hy = gy0 - gh * v;
+    ctx.fillStyle = COL.teal; ctx.beginPath(); ctx.arc(hx, hy, 16 + 4 * Math.sin(u * 10), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  entrada(u);
+}
+
+// ================= CENA 4: da sintaxe ao curso =================
+function cena4(u) {
+  fundo(u, COL.cor);
+  label('a ideia da sintaxe', W / 2, 230, eOut(prog(u, 0, .3)));
+  const ks = eBack(prog(u, .05, .45));
+  withT(W / 2, 360, .6 + .4 * ks, 0, clamp(ks), () => text('estrutura', 0, 0, { px: 120, w: 700, fam: SERIF, col: COL.amb }));
+  // seta "empregou"
+  const ka = eOut(prog(u, .5, .85));
+  text('empregada em', W / 2, 500, { px: 38, w: 500, col: COL.mute, alpha: ka });
+  // blocos empilhando
+  const bricks = [['aulas teóricas', 'rgba(246,240,227,.12)', COL.ink], ['prática', 'rgba(246,240,227,.12)', COL.ink], ['acompanhamento', 'rgba(246,240,227,.12)', COL.ink]];
+  const bw = 760, bh = 150, groundY = 1640;
+  bricks.forEach(([s, f, c], i) => {
+    const k = prog(u, .7 + i * .35, 1.1 + i * .35);
+    const y = groundY - bh / 2 - i * (bh + 16);
+    const yy = lerp(y - 900, y, eOut(k)) + (k >= 1 ? 0 : 0);
+    const sq = k >= 1 ? 1 : 1;
+    withT(W / 2, yy, sq, 0, clamp(k * 4), () => {
+      ctx.fillStyle = f; ctx.strokeStyle = 'rgba(246,240,227,.3)'; ctx.lineWidth = 3;
+      rrect(-bw / 2, -bh / 2, bw, bh, 22); ctx.fill(); ctx.stroke();
+      text(s, 0, 2, { px: 56, w: 800, col: c });
+    });
+  });
+  // tampa SYNTAX com impacto
+  const kt = prog(u, 1.9, 2.25);
+  const yT = groundY - bh / 2 - 3 * (bh + 16);
+  const land = u > 2.25 ? Math.exp(-(u - 2.25) * 8) * Math.sin((u - 2.25) * 40) : 0;
+  ctx.save(); ctx.translate(0, land * 10);
+  withT(W / 2, lerp(yT - 1000, yT, eOut(kt) ** 2), 1 + land * .04, 0, clamp(kt * 4), () => {
+    ctx.fillStyle = COL.amb; rrect(-bw / 2 - 30, -bh / 2 - 10, bw + 60, bh + 20, 26); ctx.fill();
+    text('SYNTAX', 0, 4, { px: 108, w: 900, fam: DISP, col: COL.bg, track: 6 });
+  });
+  ctx.restore();
+  // faíscas no impacto
+  if (u > 2.25) {
+    const R = rng(3), e = u - 2.25;
+    for (let i = 0; i < 26; i++) {
+      const ang = Math.PI + R() * Math.PI, sp = 300 + R() * 700, side = R() < .5 ? -1 : 1;
+      const x = W / 2 + side * (bw / 2 + 20) + Math.cos(ang) * sp * e * side * -1, y = yT + 60 + Math.sin(ang) * sp * e + 900 * e * e;
+      const a = clamp(1 - e / .7); if (a <= 0) continue;
+      ctx.fillStyle = `rgba(255,194,61,${a})`; ctx.beginPath(); ctx.arc(x, y, 6 * a + 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const kf = eOut(prog(u, 2.6, 3.0));
+  text('a ideologia do curso', W / 2, 1760, { px: 46, w: 700, col: COL.mute, alpha: kf });
+  entrada(u);
+}
+
+// ================= CENA 5: ao longo do ano =================
+const MESES = ['FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV'];
+const ITENS = [
+  { t: 'Aulas online', tag: 'acesso', ic: 'play', col: COL.amb, at: .5 },
+  { t: 'Temas de redação', tag: 'semanal', ic: 'pen', col: COL.teal, at: 1.5 },
+  { t: 'Apostilas', tag: 'semanal', ic: 'book', col: COL.teal, at: 2.1 },
+  { t: 'Simulados', tag: 'mensal', ic: 'doc', col: COL.cor, at: 3.2 },
+];
+function icone(tipo, col) {
+  ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (tipo === 'play') { ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, -16); ctx.lineTo(18, 0); ctx.lineTo(-10, 16); ctx.closePath(); ctx.fill(); }
+  if (tipo === 'pen') { ctx.rotate(-Math.PI / 4); ctx.strokeRect(-11, -34, 22, 52); ctx.beginPath(); ctx.moveTo(-11, 18); ctx.lineTo(0, 38); ctx.lineTo(11, 18); ctx.stroke(); }
+  if (tipo === 'book') { ctx.beginPath(); ctx.moveTo(0, -22); ctx.quadraticCurveTo(-20, -32, -38, -26); ctx.lineTo(-38, 26); ctx.quadraticCurveTo(-20, 20, 0, 30); ctx.quadraticCurveTo(20, 20, 38, 26); ctx.lineTo(38, -26); ctx.quadraticCurveTo(20, -32, 0, -22); ctx.lineTo(0, 30); ctx.stroke(); }
+  if (tipo === 'doc') { ctx.strokeRect(-26, -34, 52, 68); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-12, -14 + i * 18); ctx.lineTo(16, -14 + i * 18); ctx.stroke(); } }
+  ctx.restore();
+}
+function cena5(u) {
+  fundo(u, COL.teal);
+  text('Ao longo do ano', W / 2, 220, { px: 84, w: 900, fam: DISP, alpha: eOut(prog(u, 0, .3)) });
+  // régua de meses que corre
+  const ry = 370, step = 150, pos = lerp(0, MESES.length - 1, eInOut(prog(u, .2, 5.4)));
+  ctx.save(); ctx.beginPath(); ctx.rect(60, ry - 70, W - 120, 160); ctx.clip();
+  MESES.forEach((m, i) => {
+    const x = W / 2 + (i - pos) * step, d = Math.abs(i - pos);
+    const on = i <= pos + .001;
+    text(m, x, ry, { px: 40, w: 800, fam: MONO, col: on ? COL.ink : COL.mute, alpha: clamp(1.2 - d * .22) * eOut(prog(u, .1, .4)) });
+    ctx.fillStyle = on ? COL.teal : 'rgba(246,240,227,.25)'; ctx.beginPath(); ctx.arc(x, ry + 52, on ? 9 : 6, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore();
+  ctx.fillStyle = COL.amb; ctx.beginPath(); ctx.moveTo(W / 2 - 14, ry - 66); ctx.lineTo(W / 2 + 14, ry - 66); ctx.lineTo(W / 2, ry - 46); ctx.fill();
+  // cartões
+  const cw = 900, chh = 210, x0 = W / 2;
+  ITENS.forEach((it, i) => {
+    const k = prog(u, it.at, it.at + .45), y = 600 + i * (chh + 34);
+    const kb = eBack(k);
+    withT(x0 + (1 - kb) * (i % 2 ? 700 : -700), y + chh / 2, 1, (1 - eOut(k)) * (i % 2 ? .08 : -.08), clamp(k * 3), () => {
+      ctx.fillStyle = 'rgba(246,240,227,.07)'; ctx.strokeStyle = 'rgba(246,240,227,.18)'; ctx.lineWidth = 2;
+      rrect(-cw / 2, -chh / 2, cw, chh, 32); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = it.col + '26'; ctx.beginPath(); ctx.arc(-cw / 2 + 115, 0, 70, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.translate(-cw / 2 + 115, 0); icone(it.ic, it.col); ctx.restore();
+      text(it.t, -cw / 2 + 225, -30, { px: 56, w: 800, align: 'left' });
+      // etiqueta
+      const tw = measure(it.tag.toUpperCase(), 28, 800) + 44 + 8 * it.tag.length;
+      const kt = eBack(prog(u, it.at + .3, it.at + .6));
+      withT(-cw / 2 + 225 + tw / 2, 48, kt, 0, clamp(kt), () => {
+        ctx.fillStyle = it.col; rrect(-tw / 2, -26, tw, 52, 26); ctx.fill();
+        text(it.tag.toUpperCase(), 0, 2, { px: 24, w: 800, col: COL.bg, track: 8 });
+      });
+    });
+  });
+  // "reta final"
+  const kr = prog(u, 4.5, 4.85);
+  if (kr > 0) {
+    const pulse = 1 + .03 * Math.sin((u - 4.85) * 9) * (u > 4.85 ? 1 : 0);
+    withT(W / 2, 1640, eBack(kr) * pulse, 0, clamp(kr * 3), () => {
+      ctx.fillStyle = COL.amb; rrect(-330, -70, 660, 140, 70); ctx.fill();
+      text('RETA FINAL  →', 0, 3, { px: 60, w: 900, fam: DISP, col: COL.bg, track: 4 });
+    });
+  }
+  entrada(u);
+}
+
+// ---------- loop ----------
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  t = clamp(t, 0, DUR - 1e-6);
+  const c = CENAS.find(c => t >= c.a && t < c.a + c.d) || CENAS[CENAS.length - 1];
+  ctx.save(); c.f(t - c.a, c.d); ctx.restore();
+}
+if (!location.search.includes('render=1')) {
+  const t0 = performance.now();
+  const loop = () => { render(((performance.now() - t0) / 1000) % DUR); requestAnimationFrame(loop); };
+  document.fonts.ready.then(loop);
+}
+</script>
+</body>
+</html>
