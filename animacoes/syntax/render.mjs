@@ -1,4 +1,5 @@
 // Gera os takes em MP4 a partir de syntax-takes.html (quadro a quadro, 30 fps, 1080x1920).
+// Antes: python3 montar.py (gera syntax-takes.html a partir do .src.html)
 // Uso: node render.mjs                     -> takes/<n>-<nome>.mp4 (um arquivo por cena) + syntax-takes.mp4 (todos em sequência)
 //      node render.mjs --stills 1,4.2 dir  -> apenas quadros de teste (PNG)
 import { createRequire } from 'node:module';
@@ -18,7 +19,7 @@ const args = process.argv.slice(2);
 const browser = await chromium.launch(fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
 await page.goto('file://' + path.resolve(here, 'syntax-takes.html') + '?render=1');
-await page.evaluate(() => document.fonts.ready);
+await page.evaluate(() => PRONTO_TUDO);
 const DUR = await page.evaluate(() => DUR);
 const CENAS = await page.evaluate(() => CENAS.map(c => ({ nome: c.nome, a: c.a, d: c.d })));
 const frame = (t, type = 'image/jpeg') => page.evaluate(([t, type]) => { render(t); return document.getElementById('c').toDataURL(type, 0.95).split(',')[1]; }, [t, type]);
