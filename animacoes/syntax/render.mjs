@@ -1,5 +1,6 @@
 // Gera os takes em MP4 a partir de syntax-takes.html (quadro a quadro, 30 fps, 1080x1920).
 // Antes: python3 montar.py (gera syntax-takes.html a partir do .src.html)
+// Outro arquivo: --src matriculas-takes (saída em takes-matriculas/)
 // Uso: node render.mjs                     -> takes/<n>-<nome>.mp4 (um arquivo por cena) + syntax-takes.mp4 (todos em sequência)
 //      node render.mjs --stills 1,4.2 dir  -> apenas quadros de teste (PNG)
 import { createRequire } from 'node:module';
@@ -15,10 +16,14 @@ try { pw = require('playwright'); } catch { pw = require(path.join(execSync('npm
 const { chromium } = pw;
 const FPS = 30;
 const args = process.argv.slice(2);
+let nome = 'syntax-takes';
+const si = args.indexOf('--src');
+if (si >= 0) { nome = args[si + 1].replace(/\.html$/, ''); args.splice(si, 2); }
+const pasta = nome === 'syntax-takes' ? 'takes' : 'takes-' + nome.replace(/-takes$/, '');
 
 const browser = await chromium.launch(fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
-await page.goto('file://' + path.resolve(here, 'syntax-takes.html') + '?render=1');
+await page.goto('file://' + path.resolve(here, nome + '.html') + '?render=1');
 await page.evaluate(() => PRONTO_TUDO);
 const DUR = await page.evaluate(() => DUR);
 const CENAS = await page.evaluate(() => CENAS.map(c => ({ nome: c.nome, a: c.a, d: c.d })));
@@ -42,8 +47,8 @@ if (args[0] === '--stills') {
   fs.mkdirSync(dir, { recursive: true });
   for (const t of args[1].split(',').map(Number)) fs.writeFileSync(path.join(dir, `still_${t.toFixed(2)}.png`), Buffer.from(await frame(t, 'image/png'), 'base64'));
 } else {
-  fs.mkdirSync(path.join(here, 'takes'), { recursive: true });
-  for (const c of CENAS) await video(path.join(here, 'takes', c.nome + '.mp4'), c.a, c.d);
-  await video(path.join(here, 'syntax-takes.mp4'), 0, DUR);
+  fs.mkdirSync(path.join(here, pasta), { recursive: true });
+  for (const c of CENAS) await video(path.join(here, pasta, c.nome + '.mp4'), c.a, c.d);
+  await video(path.join(here, nome + '.mp4'), 0, DUR);
 }
 await browser.close();

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takes matrículas</title>
+<style>
+/*@FONTES@*/
+  html,body{margin:0;height:100%;background:#222;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Takes (9:16) para o vídeo da chamada de matrículas 2027 — identidade do curso (roxo, amarelo, branco).
+// ARQUIVO-FONTE: edite este e rode `python3 montar.py matriculas-takes` para gerar matriculas-takes.html (fontes e logo embutidas).
+// render(t) é determinística: serve para tocar no navegador e para gerar o vídeo (render.mjs).
+/*@LOGO@*/
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const ROXO = '#451260', AMAR = '#fdc600', BRANCO = '#ffffff', PAPEL = '#fdfbf7';
+const roxoA = a => `rgba(69,18,96,${a})`, brancoA = a => `rgba(255,255,255,${a})`;
+const SERIF = 'Fraunces, Georgia, serif', SANS = 'Figtree, Arial, sans-serif', MAO = 'Caveat, cursive';
+
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = x => 1 - Math.pow(1 - x, 4);            // desaceleração suave, sem "quique"
+const eIO = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const eTraco = x => eIO(x) * .85 + x * .15;          // velocidade de mão desenhando
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const CENAS = [
+  { nome: '1-matriculas-2027-abertas', d: 3.4, f: m1 },
+  { nome: '2-turmas-online', d: 3.8, f: m2 },
+  { nome: '3-mensagem-condicoes', d: 4.2, f: m3 },
+  { nome: '4-ta-esperando-o-que', d: 3.0, f: m4 },
+];
+let acc = 0; for (const c of CENAS) { c.a = acc; acc += c.d; }
+const DUR = acc;
+
+// ---------- texto ----------
+function font(px, w, fam, it = false) { ctx.font = `${it ? 'italic ' : ''}${w} ${px}px ${fam}`; }
+function measure(s, px, w, fam, it) { font(px, w, fam, it); return ctx.measureText(s).width; }
+// texto que entra subindo pouco e ganhando opacidade
+function txt(s, x, y, k, { px = 60, w = 600, fam = SANS, it = false, col = ROXO, align = 'center', rise = 26 } = {}) {
+  if (k <= 0) return;
+  ctx.save(); ctx.globalAlpha *= eOut(k); font(px, w, fam, it); ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(s, x, y + (1 - eOut(k)) * rise); ctx.restore();
+}
+
+// ---------- traço feito à mão (mesma linguagem da logo: linha grossa, ponta redonda) ----------
+function densify(pts, step = 6) {
+  const out = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / step));
+    for (let j = 0; j < n; j++) out.push([lerp(x0, x1, j / n), lerp(y0, y1, j / n)]);
+  }
+  out.push(pts[pts.length - 1]); return out;
+}
+function traco(pts, k, { w = 14, col = AMAR, seed = 1, wob = 2.2 } = {}) {
+  if (k <= 0) return;
+  const P = densify(pts), r = rng(seed), f1 = r() * 6, f2 = r() * 6;
+  let L = 0; const acc = [0];
+  for (let i = 1; i < P.length; i++) { L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); acc.push(L); }
+  const lim = L * clamp(k);
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+  for (let i = 0; i < P.length; i++) {
+    if (acc[i] > lim) break;
+    const s = acc[i] / 70, n = Math.sin(s + f1) * wob + Math.sin(s * 2.3 + f2) * wob * .5;
+    const j = Math.min(i + 1, P.length - 1), i0 = Math.max(i - 1, 0);
+    const tx = P[j][0] - P[i0][0], ty = P[j][1] - P[i0][1], tl = Math.hypot(tx, ty) || 1;
+    const x = P[i][0] - ty / tl * n, y = P[i][1] + tx / tl * n;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+// marca-texto amarelo atrás de uma palavra (bordas levemente tortas)
+function marca(x, y, w, h, k, col = AMAR) {
+  if (k <= 0) return;
+  const e = eTraco(k), ww = w * e;
+  ctx.save(); ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(x - 6, y - h / 2 + 4); ctx.lineTo(x + ww, y - h / 2); ctx.lineTo(x + ww + 4, y + h / 2 - 2); ctx.lineTo(x - 2, y + h / 2 + 3); ctx.closePath();
+  ctx.fill(); ctx.restore();
+}
+
+// ---------- logo ----------
+const IMGS = LOGO.parts.map(p => { const im = new Image(); im.src = p.data; return im; });
+const PRONTO = Promise.all(IMGS.map(im => im.decode()));
+const tint = {};   // versões recoloridas (roxo -> branco no fundo roxo)
+function img(i, cor) {
+  if (!cor) return IMGS[i];
+  const key = i + cor; if (tint[key]) return tint[key];
+  const p = LOGO.parts[i], c = document.createElement('canvas'); c.width = p.w; c.height = p.h;
+  const g = c.getContext('2d'); g.drawImage(IMGS[i], 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = cor; g.fillRect(0, 0, p.w, p.h);
+  return tint[key] = c;
+}
+// desenha a logo com cada traço revelado na direção em que foi feito.
+// t = tempo desde o início da animação da logo (Infinity = completa)
+function logo(cx, cy, largura, t, { roxo = null, amarelo = null, ritmo = 1 } = {}) {
+  const s = largura / LOGO.W;
+  ctx.save(); ctx.translate(cx - largura / 2, cy - LOGO.H * s / 2); ctx.scale(s, s);
+  let iR = 0, iA = 0;
+  LOGO.parts.forEach((p, i) => {
+    const roxoP = p.kind === 'roxo';
+    const t0 = roxoP ? iR++ * .09 : .32 + iA++ * .055;
+    const k = eTraco(prog(t, t0 * ritmo, (t0 + (roxoP ? .34 : .26)) * ritmo));
+    if (k <= 0) return;
+    const im = img(i, roxoP ? roxo : amarelo);
+    if (k >= 1) { ctx.drawImage(im, p.x, p.y); return; }
+    const ang = Math.atan2(p.dy, p.dx), cxp = p.x + p.w / 2, cyp = p.y + p.h / 2, L = Math.hypot(p.w, p.h) / 2 + 4;
+    ctx.save(); ctx.translate(cxp, cyp); ctx.rotate(ang);
+    ctx.beginPath(); ctx.rect(-L, -L, 2 * L * k, 2 * L); ctx.clip();
+    ctx.rotate(-ang); ctx.drawImage(im, p.x - cxp, p.y - cyp); ctx.restore();
+  });
+  ctx.restore();
+}
+const LOGO_DUR = .32 + 8 * .055 + .26 + .05;
+
+// fundo chapado + leve aproximação de câmera para a cena não ficar "parada"
+function fundo(cor, u, d) {
+  ctx.fillStyle = cor; ctx.fillRect(0, 0, W, H);
+  const z = 1 + .022 * (u / d);
+  ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+}
+
+// palavra que fica roxa só onde o marca-texto já passou
+function palavraMarcada(s, y, px, kTxt, kMarca, alto) {
+  const w = measure(s, px, 600, SERIF, true), x = W / 2 - w / 2;
+  marca(x - 20, y - alto * .3, w + 40, alto, kMarca);
+  txt(s, W / 2, y, kTxt, { px, w: 600, fam: SERIF, it: true, col: BRANCO });
+  if (kMarca <= 0) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(x - 20, y - alto, (w + 40) * eTraco(kMarca), alto * 2); ctx.clip();
+  txt(s, W / 2, y, 1, { px, w: 600, fam: SERIF, it: true, col: ROXO, rise: 0 }); ctx.restore();
+}
+
+// ================= M1: matrículas 2027 abertas =================
+function elipse(cx, cy, rx, ry, rot, a0 = -100, a1 = 290) {
+  const pts = [];
+  for (let i = 0; i <= 60; i++) {
+    const a = (a0 + (a1 - a0) * i / 60) * Math.PI / 180, grow = 1 + .05 * i / 60;
+    const x = Math.cos(a) * rx * grow, y = Math.sin(a) * ry * grow;
+    pts.push([cx + x * Math.cos(rot) - y * Math.sin(rot), cy + x * Math.sin(rot) + y * Math.cos(rot)]);
+  }
+  return pts;
+}
+function m1(u, d) {
+  fundo(ROXO, u, d);
+  txt('a gente veio avisar', W / 2, 470, prog(u, 0, .35), { px: 66, w: 700, fam: MAO, col: AMAR });
+  txt('matrículas', W / 2, 680, prog(u, .15, .55), { px: 140, w: 600, fam: SERIF, col: BRANCO });
+  const s = '2027', px = 300; font(px, 700, SERIF);
+  const tw = ctx.measureText(s).width; let x = W / 2 - tw / 2;
+  for (let i = 0; i < s.length; i++) {
+    const cw = ctx.measureText(s[i]).width;
+    txt(s[i], x, 1010, prog(u, .4 + i * .06, .8 + i * .06), { px, w: 700, fam: SERIF, col: BRANCO, align: 'left', rise: 22 });
+    x += cw;
+  }
+  traco(elipse(W / 2, 915, tw / 2 + 70, 175, -.05), eTraco(prog(u, 1.0, 1.6)), { w: 13, col: AMAR, seed: 31, wob: 3 });
+  txt('estão oficialmente', W / 2, 1270, prog(u, 1.55, 1.9), { px: 52, w: 500, col: brancoA(.85) });
+  palavraMarcada('abertas', 1430, 130, prog(u, 1.8, 2.15), prog(u, 1.95, 2.35), 130);
+  logo(W / 2, 1790, 250, Infinity, { roxo: BRANCO });
+}
+
+// ================= M2: turmas online =================
+const TURMAS = ['Biologia', 'Redação', 'Linguagens'];
+function m2(u, d) {
+  fundo(PAPEL, u, d);
+  txt('nossas turmas', W / 2, 330, prog(u, 0, .35), { px: 60, w: 400, fam: SERIF, it: true, col: roxoA(.7) });
+  txt('online', W / 2, 490, prog(u, .1, .5), { px: 150, w: 700, fam: SERIF });
+  const ow = measure('online', 150, 700, SERIF);
+  traco([[W / 2 - ow / 2 + 14, 540], [W / 2 + ow / 2 - 8, 528]], eTraco(prog(u, .45, .85)), { w: 15, seed: 8 });
+  const x0 = 120, x1 = W - 120;
+  TURMAS.forEach((t, i) => {
+    const y = 800 + i * 285, k = prog(u, .85 + i * .4, 1.3 + i * .4);
+    ctx.save(); ctx.globalAlpha = eOut(k); ctx.fillStyle = roxoA(.15); ctx.fillRect(x0, y + 80, (x1 - x0) * eOut(k), 3); ctx.restore();
+    txt(String(i + 1).padStart(2, '0'), x0, y - 4, k, { px: 40, w: 600, col: roxoA(.5), align: 'left', rise: 16 });
+    txt(t, x0 + 100, y + 10, k, { px: 112, w: 600, fam: SERIF, align: 'left', rise: 20 });
+  });
+  logo(W / 2, 1790, 250, Infinity);
+}
+
+// ================= M3: mande mensagem / condições promocionais =================
+function balao(x0, y0, x1, y1, r) {
+  const pts = [], arc = (cx, cy, a0, a1) => { for (let i = 0; i <= 8; i++) { const a = (a0 + (a1 - a0) * i / 8) * Math.PI / 180; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  pts.push([x0 + r, y0]); arc(x1 - r, y0 + r, -90, 0); arc(x1 - r, y1 - r, 0, 90);
+  pts.push([x1 - 150, y1]); pts.push([x1 - 110, y1 + 70]); pts.push([x1 - 210, y1]);
+  arc(x0 + r, y1 - r, 90, 180); arc(x0 + r, y0 + r, 180, 270); pts.push([x0 + r + 6, y0 - 2]);
+  return pts;
+}
+function m3(u, d) {
+  fundo(ROXO, u, d);
+  txt('mande logo uma mensagem', W / 2, 300, prog(u, 0, .35), { px: 66, w: 700, fam: MAO, col: AMAR });
+  traco(balao(150, 400, 930, 640, 60), eTraco(prog(u, .15, .85)), { w: 9, col: BRANCO, seed: 14, wob: 1.6 });
+  const msg = 'Quero ser aluno SYNTAX!', n = Math.floor(clamp((u - .8) / .8) * msg.length + .001);
+  const mw = measure(msg, 54, 600, SANS);
+  if (n > 0) txt(msg.slice(0, n), W / 2 - mw / 2, 540, 1, { px: 54, w: 600, col: BRANCO, align: 'left', rise: 0 });
+  txt('e aproveite as', W / 2, 880, prog(u, 1.7, 2.05), { px: 52, w: 500, col: brancoA(.85) });
+  txt('condições', W / 2, 1030, prog(u, 1.85, 2.2), { px: 130, w: 600, fam: SERIF, col: BRANCO });
+  palavraMarcada('promocionais', 1190, 120, prog(u, 2.05, 2.4), prog(u, 2.3, 2.75), 125);
+  txt('da nossa primeira campanha de matrículas', W / 2, 1380, prog(u, 2.8, 3.15), { px: 56, w: 700, fam: MAO, col: AMAR });
+  logo(W / 2, 1790, 250, Infinity, { roxo: BRANCO });
+}
+
+// ================= M4: tá esperando o quê? =================
+function m4(u, d) {
+  fundo(PAPEL, u, d);
+  txt('tá esperando o quê', W / 2, 640, prog(u, 0, .35), { px: 92, w: 600, fam: SERIF, it: true });
+  txt('pra ser aluno', W / 2, 780, prog(u, .25, .6), { px: 56, w: 500, col: roxoA(.7) });
+  logo(W / 2, 1080, 900, u - .55);
+  const t = 'matrículas 2027 abertas', tw = measure(t, 50, 600, SANS);
+  txt(t, W / 2, 1460, prog(u, 1.75, 2.1), { px: 50, w: 600 });
+  traco([[W / 2 - tw / 2, 1494], [W / 2 + tw / 2, 1486]], eTraco(prog(u, 2.0, 2.4)), { w: 12, seed: 22 });
+}
+
+// ---------- loop ----------
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  t = clamp(t, 0, DUR - 1e-6);
+  const c = CENAS.find(c => t >= c.a && t < c.a + c.d) || CENAS[CENAS.length - 1];
+  ctx.save(); c.f(t - c.a, c.d); ctx.restore();
+}
+const PRONTO_TUDO = Promise.all([PRONTO, document.fonts.load('600 40px Fraunces'), document.fonts.load('italic 400 40px Fraunces'), document.fonts.load('italic 600 40px Fraunces'),
+  document.fonts.load('700 40px Fraunces'), document.fonts.load('500 40px Figtree'), document.fonts.load('600 40px Figtree'), document.fonts.load('700 40px Figtree'), document.fonts.load('700 40px Caveat')]);
+if (!location.search.includes('render=1')) {
+  PRONTO_TUDO.then(() => { const t0 = performance.now(); const loop = () => { render(((performance.now() - t0) / 1000) % DUR); requestAnimationFrame(loop); }; loop(); });
+}
+</script>
+</body>
+</html>

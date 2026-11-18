@@ -1,6 +1,7 @@
 # Gera syntax-takes.html a partir de syntax-takes.src.html, embutindo fontes (fontes/) e a logo fatiada (logo/).
-# Uso: python3 montar.py
-import base64, json, re, pathlib
+# Uso: python3 montar.py [syntax-takes|matriculas-takes]
+import base64, json, re, pathlib, sys
+nome = sys.argv[1] if len(sys.argv) > 1 else 'syntax-takes'
 aqui = pathlib.Path(__file__).parent
 b64 = lambda p: base64.b64encode(p.read_bytes()).decode()
 css = []
@@ -10,7 +11,7 @@ for f in sorted((aqui / 'fontes').glob('*.woff2')):
     css.append(f"@font-face{{font-family:'{fam}';font-weight:{peso};font-style:{estilo};src:url(data:font/woff2;base64,{b64(f)}) format('woff2');}}")
 meta = json.loads((aqui / 'logo' / 'logo.json').read_text())
 for p in meta['parts']: p['data'] = 'data:image/png;base64,' + b64(aqui / 'logo' / p['src'])
-src = (aqui / 'syntax-takes.src.html').read_text()
+src = (aqui / f'{nome}.src.html').read_text()
 src = src.replace('/*@FONTES@*/', '\n'.join(css)).replace('/*@LOGO@*/', 'const LOGO = ' + json.dumps(meta) + ';')
-(aqui / 'syntax-takes.html').write_text(src)
-print('ok: syntax-takes.html', round(len(src) / 1024), 'KB')
+(aqui / f'{nome}.html').write_text(src)
+print(f'ok: {nome}.html', round(len(src) / 1024), 'KB')
