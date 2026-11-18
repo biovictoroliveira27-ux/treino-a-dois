@@ -47,7 +47,7 @@ const CENAS = [
   { nome: '2-estruturacao-dos-textos', d: 3.8, f: cena2 },
   { nome: '3-organizacao-teoria-pratica', d: 4.6, f: cena3 },
   { nome: '4-da-sintaxe-ao-curso', d: 3.8, f: cena4 },
-  { nome: '5-ao-longo-do-ano', d: 6.2, f: cena5 },
+  { nome: '5-ao-longo-do-ano', d: 5.0, f: cena5 },
 ];
 let acc = 0; for (const c of CENAS) { c.a = acc; acc += c.d; }
 const DUR = acc;
@@ -211,39 +211,45 @@ function cena2(u, d) {
   }
 }
 
-// ================= CENA 3: organização (teoria + prática) =================
-const AULAS = ['Coesão e coerência', 'Argumentação', 'Repertório', 'Proposta de intervenção'];
+// ================= CENA 3: organização do curso inteiro (teoria + prática) =================
+const TEORIA = ['aulas', 'apostilas'];
+const PRATICA = ['exercícios', 'redações', 'simulados'];
 function cena3(u, d) {
   fundo(PAPEL, u, d);
   txt('Organização', W / 2, 270, prog(u, 0, .4), { px: 118, w: 700, fam: SERIF });
   const tw = measure('Organização', 118, 700, SERIF);
   traco([[W / 2 - tw / 2 + 20, 318], [W / 2 + tw / 2 - 10, 306]], eTraco(prog(u, .35, .75)), { w: 15, seed: 7 });
-  // aulas teóricas
-  const xL = 120;
-  txt('as aulas teóricas', xL, 480, prog(u, .45, .8), { px: 54, w: 400, fam: SERIF, it: true, align: 'left' });
-  AULAS.forEach((a, i) => {
-    const k = prog(u, .7 + i * .14, 1.1 + i * .14), y = 590 + i * 96;
-    ctx.save(); ctx.globalAlpha = eOut(k); ctx.fillStyle = roxoA(.18); ctx.fillRect(xL, y + 30, (W - 2 * xL) * eOut(k), 3); ctx.restore();
-    txt(String(i + 1).padStart(2, '0'), xL, y, k, { px: 36, w: 600, col: roxoA(.5), align: 'left', rise: 14 });
-    txt(a, xL + 80, y, k, { px: 48, w: 600, align: 'left', rise: 14 });
+  // duas colunas: teoria | prática
+  const xa = 290, xb = 790, yH = 500;
+  txt('a teoria', xa, yH, prog(u, .5, .85), { px: 66, w: 400, fam: SERIF, it: true });
+  txt('a prática', xb, yH, prog(u, .7, 1.05), { px: 66, w: 400, fam: SERIF, it: true });
+  traco([[W / 2 + 4, 430], [W / 2 - 2, 880]], eTraco(prog(u, .55, .95)), { w: 10, seed: 12, wob: 1.5 });
+  TEORIA.forEach((s, i) => txt(s, xa, 620 + i * 90, prog(u, .85 + i * .12, 1.2 + i * .12), { px: 50, w: 600, col: roxoA(.85), rise: 14 }));
+  PRATICA.forEach((s, i) => txt(s, xb, 620 + i * 90, prog(u, 1.05 + i * .12, 1.4 + i * .12), { px: 50, w: 600, col: roxoA(.85), rise: 14 }));
+  // ciclo em volta de cada aluno
+  const cx = W / 2, cy = 1330, R = 250;
+  txt('cada aluno', cx, cy + 22, prog(u, 1.75, 2.1), { px: 68, w: 600, fam: SERIF, it: true });
+  const nos = [['teoria', -90], ['prática', 30], ['evolução', 150]];
+  nos.forEach(([nm, a], i) => {
+    const r = a * Math.PI / 180, x = cx + Math.cos(r) * R, y = cy + Math.sin(r) * R;
+    const k = prog(u, 1.9 + i * .45, 2.25 + i * .45);
+    if (k > 0) {
+      ctx.save(); ctx.globalAlpha = eOut(k); font(44, 700, SANS);
+      const w = ctx.measureText(nm).width + 44;
+      ctx.fillStyle = PAPEL; ctx.fillRect(x - w / 2, y - 40, w, 80); ctx.restore();
+    }
+    txt(nm, x, y + 15, k, { px: 44, w: 700, rise: 10 });
+    // arco até o próximo nó
+    const a0 = (a + 26) * Math.PI / 180, a1 = (a + 120 - 26) * Math.PI / 180, pts = [];
+    for (let j = 0; j <= 24; j++) { const t = lerp(a0, a1, j / 24); pts.push([cx + Math.cos(t) * R, cy + Math.sin(t) * R]); }
+    const ka = eTraco(prog(u, 2.1 + i * .45, 2.5 + i * .45));
+    traco(pts, ka, { w: 11, col: AMAR, seed: 90 + i, wob: 1.4 });
+    const kh = eTraco(prog(u, 2.45 + i * .45, 2.6 + i * .45));
+    if (kh > 0) {
+      const ex = cx + Math.cos(a1) * R, ey = cy + Math.sin(a1) * R, tx = -Math.sin(a1), ty = Math.cos(a1), nx = -ty, ny = tx, s = 26;
+      traco([[ex - tx * s + nx * s * .8, ey - ty * s + ny * s * .8], [ex, ey], [ex - tx * s - nx * s * .8, ey - ty * s - ny * s * .8]], kh, { w: 11, col: AMAR, seed: 95 + i, wob: .4 });
+    }
   });
-  // prática de cada aluno: folhas de redação recebendo o visto
-  const yP = 1150;
-  txt('a prática de cada aluno', xL, yP, prog(u, 1.75, 2.1), { px: 54, w: 400, fam: SERIF, it: true, align: 'left' });
-  for (let i = 0; i < 4; i++) {
-    const k = eOut(prog(u, 1.95 + i * .1, 2.4 + i * .1));
-    const fw = 180, fh = 240, gx = (W - 2 * xL - 4 * fw) / 3, x = xL + i * (fw + gx), y = yP + 70;
-    if (k <= 0) continue;
-    ctx.save(); ctx.globalAlpha = k; ctx.translate(x + fw / 2, y + fh / 2 + (1 - k) * 30); ctx.rotate((i % 2 ? 1 : -1) * .02);
-    ctx.fillStyle = BRANCO; ctx.strokeStyle = roxoA(.25); ctx.lineWidth = 3; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); ctx.strokeRect(-fw / 2, -fh / 2, fw, fh);
-    for (let l = 0; l < 6; l++) { ctx.fillStyle = roxoA(.22); ctx.fillRect(-fw / 2 + 24, -fh / 2 + 34 + l * 30, (l === 5 ? 70 : fw - 48), 6); }
-    ctx.restore();
-    // visto amarelo feito à mão
-    const kv = eTraco(prog(u, 2.6 + i * .32, 2.9 + i * .32));
-    const cx = x + fw / 2 + 30, cy = y + fh - 30;
-    traco([[cx - 44, cy - 12], [cx - 14, cy + 22], [cx + 46, cy - 52]], kv, { w: 15, col: AMAR, seed: 60 + i, wob: 1 });
-    txt(`semana ${i + 1}`, x + fw / 2, y + fh + 62, prog(u, 2.1 + i * .1, 2.5 + i * .1), { px: 36, w: 500, col: roxoA(.7), rise: 10 });
-  }
   logo(W / 2, 1790, 250, Infinity);
 }
 
@@ -275,7 +281,7 @@ function cena5(u, d) {
   txt('Ao longo do ano', W / 2, 250, prog(u, 0, .4), { px: 104, w: 700, fam: SERIF });
   // linha do ano avançando
   const x0 = 120, x1 = W - 120, yL = 400;
-  const kAno = eIO(prog(u, .25, 5.4));
+  const kAno = eIO(prog(u, .25, 4.7));
   ctx.fillStyle = roxoA(.15); ctx.fillRect(x0, yL - 3, x1 - x0, 6);
   traco([[x0, yL], [lerp(x0, x1, kAno), yL]], kAno > 0 ? 1 : 0, { w: 10, col: AMAR, wob: 0 });
   MESES.forEach((m, i) => {
@@ -284,21 +290,13 @@ function cena5(u, d) {
   });
   // itens
   ITENS.forEach(([nome, freq, t0], i) => {
-    const y = 610 + i * 190, k = prog(u, t0, t0 + .45);
+    const y = 660 + i * 250, k = prog(u, t0, t0 + .45);
     ctx.save(); ctx.globalAlpha = eOut(k); ctx.fillStyle = roxoA(.15); ctx.fillRect(x0, y + 70, (x1 - x0) * eOut(k), 3); ctx.restore();
     txt(nome, x0, y, k, { px: 66, w: 700, align: 'left', rise: 20 });
     const fw = measure(freq, 50, 700, MAO);
     traco([[x1 - fw - 6, y + 14], [x1 + 4, y + 8]], eTraco(prog(u, t0 + .3, t0 + .6)), { w: 13, col: AMAR, seed: 80 + i });
     txt(freq, x1, y, prog(u, t0 + .2, t0 + .55), { px: 50, w: 700, fam: MAO, col: ROXO, align: 'right', rise: 12 });
   });
-  // reta final
-  const kr = prog(u, 4.4, 4.8);
-  const rw = measure('reta final', 96, 600, SERIF, true);
-  ctx.save(); ctx.translate(W / 2 - rw / 2, 1515);
-  marca(-14, -30, rw + 28, 96, prog(u, 4.75, 5.15));
-  ctx.restore();
-  txt('e nessa', W / 2, 1405, kr, { px: 50, w: 400, fam: SERIF, it: true, col: roxoA(.7) });
-  txt('reta final', W / 2, 1515, prog(u, 4.55, 4.95), { px: 96, w: 600, fam: SERIF, it: true });
   logo(W / 2, 1790, 250, Infinity);
 }
 
