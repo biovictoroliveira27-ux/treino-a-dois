@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo líquida SYNTAX</title>
+<style>
+/*@FONTES@*/
+  html,body{margin:0;height:100%;background:#222;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <!-- efeito "gooey": desfoca e corta o alfa, fazendo gotas próximas se fundirem como líquido -->
+  <filter id="goo" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="12"/>
+    <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 32 -14"/>
+  </filter>
+</svg>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// A logo do SYNTAX se formando como líquido: o roxo sobe em filetes e preenche as letras,
+// o amarelo escorre de cima para os traços; no fim tudo se assenta na logo nítida.
+// ARQUIVO-FONTE: edite este e rode `python3 montar.py logo-liquida`.
+// Fundo pela URL: ?fundo=claro (padrão) | roxo | transparente
+/*@LOGO@*/
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const ROXO = '#451260', AMAR = '#fdc600', BRANCO = '#ffffff', PAPEL = '#fdfbf7';
+const FUNDO = (new URLSearchParams(location.search).get('fundo') || 'claro');
+const COR_ROXA = FUNDO === 'roxo' ? BRANCO : ROXO;     // letras brancas no fundo roxo
+const DUR = 4.4;
+const CENAS = [{ nome: 'logo-liquida', a: 0, d: DUR }];
+const LARG = 920, CX = W / 2, CY = H / 2;
+const S = LARG / LOGO.W, OX = CX - LARG / 2, OY = CY - LOGO.H * S / 2;
+
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const IMGS = LOGO.parts.map(p => { const im = new Image(); im.src = p.data; return im; });
+const tint = {};
+function img(i, cor) {
+  const key = i + cor; if (tint[key]) return tint[key];
+  const p = LOGO.parts[i], c = document.createElement('canvas'); c.width = p.w; c.height = p.h;
+  const g = c.getContext('2d'); g.drawImage(IMGS[i], 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = cor; g.fillRect(0, 0, p.w, p.h);
+  return tint[key] = c;
+}
+
+// ---------- gotas: cada uma tem um alvo dentro da logo ----------
+let GOTAS = [], PARTES = [];
+function preparar() {
+  const R = rng(2027);
+  let iR = 0, iA = 0;
+  LOGO.parts.forEach((p, i) => {
+    const roxo = p.kind === 'roxo';
+    // amostra pontos dentro do traço (na escala final)
+    const w = Math.ceil(p.w * S), h = Math.ceil(p.h * S), c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.drawImage(IMGS[i], 0, 0, w, h);
+    const a = g.getImageData(0, 0, w, h).data, passo = roxo ? 7 : 6, pts = [];
+    for (let y = 0; y < h; y += passo) for (let x = 0; x < w; x += passo) {
+      const jx = Math.min(w - 1, x + Math.floor(R() * passo)), jy = Math.min(h - 1, y + Math.floor(R() * passo));
+      if (a[(jy * w + jx) * 4 + 3] > 150) pts.push([OX + p.x * S + jx, OY + p.y * S + jy]);
+    }
+    const cx = OX + (p.x + p.w / 2) * S, cy = OY + (p.y + p.h / 2) * S;
+    // ordem de preenchimento: ao longo da direção do traço
+    let pmin = Infinity, pmax = -Infinity;
+    for (const q of pts) { const pr = (q[0] - cx) * p.dx + (q[1] - cy) * p.dy; pmin = Math.min(pmin, pr); pmax = Math.max(pmax, pr); }
+    const t0 = roxo ? .05 + iR++ * .13 : 1.55 + iA++ * .07;
+    const lado = (R() < .5 ? -1 : 1), fase = R() * 6.28;
+    // origem do filete: roxo sobe de baixo, amarelo escorre de cima
+    const ox = cx + (R() - .5) * 260, oy = roxo ? H + 140 : -140;
+    let tFim = 0;
+    for (const q of pts) {
+      const pr = ((q[0] - cx) * p.dx + (q[1] - cy) * p.dy - pmin) / (pmax - pmin || 1);
+      const viagem = roxo ? 1.05 + R() * .05 : .8 + R() * .04;
+      const chega = t0 + pr * (roxo ? .55 : .35) + R() * .03 + viagem;
+      tFim = Math.max(tFim, chega);
+      GOTAS.push({ roxo, alvo: q, centro: [cx, cy], origem: [ox + (R() - .5) * 18, oy + (R() - .5) * 30], lado, ph: fase, ph2: R() * 6.28,
+        parte: i, sai: chega - viagem, chega, r: roxo ? 7 + R() * 1.2 : 5.6 + R() * 1 });
+    }
+    PARTES.push({ i, roxo, tFim });
+  });
+}
+
+function posicao(gt, t) {
+  const k = prog(t, gt.sai, gt.chega);
+  if (k <= 0) return null;
+  const e = eIO(k);
+  const [ox, oy] = gt.origem, [cx, cy] = gt.centro, [tx, ty] = gt.alvo;
+  // curva do filete: vai até perto do centro da letra fazendo uma onda lateral, e no fim se espalha até o alvo
+  const mx = lerp(ox, cx, .5) + gt.lado * 220, my = lerp(oy, cy, .55);
+  const bx = (1 - e) * (1 - e) * ox + 2 * (1 - e) * e * mx + e * e * cx;
+  const by = (1 - e) * (1 - e) * oy + 2 * (1 - e) * e * my + e * e * cy;
+  const sp = eOut(prog(k, .55, 1));
+  let x = bx + (tx - cx) * sp, y = by + (ty - cy) * sp;
+  // ondulação que morre ao chegar
+  const onda = Math.sin(k * 9 + gt.ph) * 26 * (1 - k);
+  x += onda * (gt.roxo ? 1 : .6);
+  // pequeno balanço depois de assentar
+  if (t > gt.chega) { const dt = t - gt.chega; const b = Math.exp(-7 * dt) * Math.sin(dt * 22 + gt.ph2) * 4; x += b; y += b * .6; }
+  // gota maior em movimento (vira filete grosso), menor parada
+  const r = gt.r * (1 + 1.5 * (1 - sp));
+  return [x, y, r, k];
+}
+
+// camadas separadas para o efeito líquido de cada cor
+const camada = { roxo: document.createElement('canvas'), amar: document.createElement('canvas') };
+for (const c of Object.values(camada)) { c.width = W; c.height = H; }
+
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (FUNDO === 'claro') { ctx.fillStyle = PAPEL; ctx.fillRect(0, 0, W, H); }
+  if (FUNDO === 'roxo') { ctx.fillStyle = ROXO; ctx.fillRect(0, 0, W, H); }
+  // o líquido some quando cada traço "solidifica"
+  const solido = i => eOut(prog(t, PARTES.find(p => p.i === i).tFim + .05, PARTES.find(p => p.i === i).tFim + .45));
+  for (const [nome, roxo, cor] of [['roxo', true, COR_ROXA], ['amar', false, AMAR]]) {
+    const c = camada[nome], g = c.getContext('2d');
+    g.clearRect(0, 0, W, H); g.fillStyle = cor;
+    for (const gt of GOTAS) {
+      if (gt.roxo !== roxo) continue;
+      const p = posicao(gt, t); if (!p) continue;
+      const fade = 1 - solido(gt.parte); if (fade <= 0) continue;
+      g.beginPath(); g.arc(p[0], p[1], p[2] * (.35 + .65 * fade), 0, Math.PI * 2); g.fill();
+    }
+    ctx.save(); ctx.filter = 'url(#goo)'; ctx.drawImage(c, 0, 0); ctx.restore();
+  }
+  // logo nítida entrando por baixo do líquido
+  ctx.save(); ctx.translate(OX, OY); ctx.scale(S, S);
+  for (const P of PARTES) {
+    const a = solido(P.i); if (a <= 0) continue;
+    const p = LOGO.parts[P.i];
+    ctx.globalAlpha = a; ctx.drawImage(img(P.i, P.roxo ? COR_ROXA : AMAR), p.x, p.y);
+  }
+  ctx.restore();
+}
+const PRONTO_TUDO = Promise.all(IMGS.map(im => im.decode())).then(preparar);
+if (!location.search.includes('render=1')) {
+  PRONTO_TUDO.then(() => { const t0 = performance.now(); const loop = () => { render(((performance.now() - t0) / 1000) % (DUR + .8)); requestAnimationFrame(loop); }; loop(); });
+}
+</script>
+</body>
+</html>
