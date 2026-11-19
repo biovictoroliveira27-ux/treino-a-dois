@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo cinema SYNTAX</title>
+<style>
+/*@FONTES@*/
+  html,body{margin:0;height:100%;background:#222;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Versão "cinematográfica" da logo em linhas: a câmera começa bem perto, acompanhando a ponta de cada
+// linha enquanto ela se dobra e forma as letras; no fim o zoom abre e mostra a logo inteira.
+// ARQUIVO-FONTE: edite este e rode `python3 montar.py logo-cinema`.
+// Fundo pela URL: ?fundo=claro (padrão) | roxo | amarelo
+/*@LOGO@*/
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const ROXO = '#451260', AMAR = '#fdc600', BRANCO = '#ffffff', PAPEL = '#fdfbf7';
+const FUNDO = (new URLSearchParams(location.search).get('fundo') || 'claro');
+const COR_ROXA = FUNDO === 'roxo' ? BRANCO : ROXO;
+const COR_AMAR = FUNDO === 'amarelo' ? BRANCO : AMAR;
+const DUR = 7.2;
+const CENAS = [{ nome: 'logo-cinema', a: 0, d: DUR }];
+const LARG = 920, CX = W / 2, CY = H / 2;
+const S = LARG / LOGO.W, OX = CX - LARG / 2, OY = CY - LOGO.H * S / 2;
+
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// linhas centrais dos traços da logo (coordenadas da logo, 2000 px de largura), na ordem em que se formam
+const TRACOS = [
+  { roxo: true, p: [[385, 375], [330, 318], [292, 284], [255, 274], [215, 285], [195, 315], [202, 345], [232, 366], [282, 396], [316, 426], [330, 462], [320, 496], [290, 520], [255, 526], [224, 514], [198, 488], [128, 414]] },   // S
+  { roxo: true, p: [[500, 276], [535, 333], [568, 377], [592, 398]] },                                    // Y braço esquerdo
+  { roxo: true, p: [[775, 128], [700, 245], [622, 368], [596, 412], [592, 600], [592, 756]] },            // Y braço direito + haste
+  { roxo: true, p: [[812, 756], [812, 450], [812, 288], [828, 268], [848, 290], [882, 370], [916, 450], [936, 516], [956, 528], [963, 500], [963, 300], [962, 76]] }, // N
+  { roxo: true, p: [[1062, 276], [1140, 276], [1224, 276]] },                                             // T barra
+  { roxo: true, p: [[1143, 284], [1143, 520], [1143, 752]] },                                             // T haste
+  { roxo: true, p: [[1302, 534], [1338, 412], [1364, 302], [1386, 266], [1406, 292], [1440, 420], [1478, 560], [1520, 748]] }, // A
+  { roxo: true, p: [[1336, 462], [1430, 462]] },                                                          // A barra
+  { roxo: true, p: [[1497, 136], [1580, 255], [1665, 376], [1700, 422], [1810, 590], [1925, 760]] },     // X descendo
+  { roxo: true, p: [[1760, 274], [1720, 330], [1680, 386], [1630, 458], [1586, 524]] },                  // X subindo
+  { roxo: false, p: [[62, 438], [140, 518], [222, 600]] },
+  { roxo: false, p: [[287, 202], [362, 282], [440, 362]] },
+  { roxo: false, p: [[724, 296], [688, 345], [652, 392], [636, 425], [636, 560], [636, 684]] },
+  { roxo: false, p: [[852, 452], [880, 522], [904, 562], [935, 572], [975, 572], [1000, 552], [1006, 500], [1006, 360], [1006, 212]] },
+  { roxo: false, p: [[1066, 320], [1086, 332], [1090, 460], [1090, 586]] },
+  { roxo: false, p: [[1180, 476], [1180, 610], [1180, 740]] },
+  { roxo: false, p: [[1406, 166], [1470, 400], [1540, 650]] },
+  { roxo: false, p: [[1500, 226], [1555, 296], [1606, 368], [1614, 398], [1570, 476]] },
+  { roxo: false, p: [[1790, 310], [1742, 374], [1736, 404], [1764, 444], [1852, 566]] },
+];
+const LARG_ROXO = 40 * S, LARG_AMAR = 21 * S;
+
+// Catmull-Rom + reamostragem por comprimento: linha suave com N pontos igualmente espaçados
+function suavizar(P) {
+  if (P.length < 3) return P;
+  const out = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(i - 1, 0)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(i + 2, P.length - 1)];
+    for (let j = 0; j < 12; j++) {
+      const t = j / 12, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map(k => .5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)));
+    }
+  }
+  out.push(P[P.length - 1]); return out;
+}
+function reamostrar(P, passo) {
+  const acc = [0];
+  for (let i = 1; i < P.length; i++) acc.push(acc[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const L = acc[acc.length - 1], n = Math.max(2, Math.round(L / passo)), out = [];
+  let j = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = L * i / n; while (j < P.length - 2 && acc[j + 1] < d) j++;
+    const k = (d - acc[j]) / (acc[j + 1] - acc[j] || 1);
+    out.push([lerp(P[j][0], P[j + 1][0], k), lerp(P[j][1], P[j + 1][1], k)]);
+  }
+  return { pts: out, L };
+}
+
+// ---------- preparação: alvo de cada linha + anel circular de partida ----------
+const R0 = rng(27);
+const LINHAS = TRACOS.map((tr, i) => {
+  const tela = tr.p.map(([x, y]) => [OX + x * S, OY + y * S]);
+  const { pts, L } = reamostrar(suavizar(tela), 4);
+  return { ...tr, pts, L, i };
+});
+// anéis: roxo por dentro, amarelo por fora; cada anel gira num sentido
+const roxas = LINHAS.filter(l => l.roxo), amarelas = LINHAS.filter(l => !l.roxo);
+roxas.forEach((l, j) => { l.raio = 150 + j * 30; });
+amarelas.forEach((l, j) => { l.raio = 470 - j * 14; });
+LINHAS.forEach((l, j) => {
+  l.sentido = j % 2 ? -1 : 1;
+  l.vel = (.9 + R0() * .5) * l.sentido;          // rad/s
+  l.a0 = R0() * Math.PI * 2;
+  l.span = l.L / l.raio;                          // arco com o mesmo comprimento da linha
+  l.parte = l.roxo ? .7 + roxas.indexOf(l) * .3 : 3.2 + amarelas.indexOf(l) * .13;  // quando começa a se encaixar
+});
+
+const IMGS = LOGO.parts.map(p => { const im = new Image(); im.src = p.data; return im; });
+const tint = {};
+function img(i, cor) {
+  const key = i + cor; if (tint[key]) return tint[key];
+  const p = LOGO.parts[i], c = document.createElement('canvas'); c.width = p.w; c.height = p.h;
+  const g = c.getContext('2d'); g.drawImage(IMGS[i], 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = cor; g.fillRect(0, 0, p.w, p.h);
+  return tint[key] = c;
+}
+
+// ponto s (0..1) da linha l no tempo t
+const DESENROLA = 1.25, ATRASO = .55;
+function ponto(l, s, t) {
+  // posição no anel (gira sempre; desacelera quando a linha sai)
+  const ang = l.a0 + l.vel * t + (s - .5) * l.span * l.sentido;
+  const respira = 1 + .04 * Math.sin(t * 2.2 + l.i);
+  const ra = l.raio * respira;
+  const [tx, ty] = l.pts[Math.round(s * (l.pts.length - 1))];
+  // a ponta da linha sai primeiro e o resto vem atrás: a linha "se desenrola"
+  const k = eIO(prog(t, l.parte + s * ATRASO, l.parte + s * ATRASO + DESENROLA));
+  if (k <= 0) return [CX + Math.cos(ang) * ra, CY + Math.sin(ang) * ra];
+  if (k >= 1) return [tx, ty];
+  // interpolação em coordenadas polares: o caminho vira uma espiral, não uma reta
+  const rt = Math.hypot(tx - CX, ty - CY), at = Math.atan2(ty - CY, tx - CX);
+  // giro decidido uma vez por linha (pelo ponto do meio) para os vizinhos não irem para lados opostos
+  if (l.daMeio === undefined) {
+    const [mx, my] = l.pts[Math.round((l.pts.length - 1) / 2)], am = l.a0 + l.vel * l.parte;
+    let d = Math.atan2(my - CY, mx - CX) - am; l.daMeio = Math.atan2(Math.sin(d), Math.cos(d));
+  }
+  let da = at - ang - l.daMeio; da = Math.atan2(Math.sin(da), Math.cos(da)) + l.daMeio;
+  const a = ang + da * k, r = lerp(ra, rt, k);
+  // mistura com o caminho reto no fim para cravar no alvo
+  const px = CX + Math.cos(a) * r, py = CY + Math.sin(a) * r, m = eOut(prog(k, .55, 1));
+  return [lerp(px, tx, m), lerp(py, ty, m)];
+}
+
+// ---------- câmera ----------
+// alvo: média das pontas das linhas que estão se movendo agora (peso maior no meio do movimento)
+function alvoCamera(t) {
+  let sx = 0, sy = 0, sw = 0;
+  for (const l of LINHAS) {
+    const k = prog(t, l.parte, l.parte + DESENROLA + ATRASO * .3);
+    if (k <= 0 || k >= 1) continue;
+    // peso alto^6: a câmera "escolhe" a linha mais ativa em vez de mirar no meio de duas
+    const w = Math.pow(Math.sin(Math.PI * k) * (l.roxo ? 1 : .6), 6);
+    // segue o ponto onde a linha está se dobrando agora (meio do desenrolar)
+    const sDobra = clamp((t - l.parte - DESENROLA * .5) / ATRASO, 0, 1);
+    const [x, y] = ponto(l, sDobra, t); sx += x * w; sy += y * w; sw += w;
+  }
+  if (sw < 1e-6) { const l = LINHAS[0], [x, y] = ponto(l, .12, t); return [x, y, 0]; }  // no começo, segue o S girando no anel
+  return [sx / sw, sy / sw, sw];
+}
+// câmera simulada uma vez (mola suave), depois só consultada: render(t) continua determinística
+const CAM = [], CAM_HZ = 240;
+function prepararCamera() {
+  let [x, y] = alvoCamera(0), vx = 0, vy = 0, rot = 0;
+  for (let i = 0; i <= DUR * CAM_HZ; i++) {
+    const t = i / CAM_HZ, dt = 1 / CAM_HZ, [tx, ty] = alvoCamera(t);
+    // mola criticamente amortecida
+    const w = 10, ax = w * w * (tx - x) - 2 * w * vx, ay = w * w * (ty - y) - 2 * w * vy;
+    vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+    // inclinação leve na direção do movimento, como câmera na mão
+    const alvoRot = clamp(vx / 2600, -.16, .16);
+    rot += (alvoRot - rot) * (1 - Math.exp(-dt * 3));
+    CAM.push([x, y, rot]);
+  }
+}
+function camera(t) {
+  const f = clamp(t, 0, DUR) * CAM_HZ, i = Math.min(Math.floor(f), CAM.length - 2), k = f - i;
+  const a = CAM[i], b = CAM[i + 1];
+  let x = lerp(a[0], b[0], k), y = lerp(a[1], b[1], k), rot = lerp(a[2], b[2], k);
+  // zoom: bem perto (2.7x) e abre no fim mostrando a logo inteira
+  const abre = eIO(prog(t, 4.75, 6.2));
+  const z = Math.exp(lerp(Math.log(2.7), Math.log(1.0), abre));
+  x = lerp(x, CX, abre); y = lerp(y, CY, abre); rot *= 1 - abre;
+  return { x, y, z, rot };
+}
+
+function desenhar(t) {
+  const bg = { claro: PAPEL, roxo: ROXO, amarelo: AMAR }[FUNDO];
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const c = camera(t);
+  ctx.translate(W / 2, H / 2); ctx.rotate(c.rot); ctx.scale(c.z, c.z); ctx.translate(-c.x, -c.y);
+  // guias circulares bem leves: dão noção de movimento quando a câmera está perto
+  const guia = FUNDO === 'claro' ? 'rgba(69,18,96,.07)' : FUNDO === 'roxo' ? 'rgba(255,255,255,.07)' : 'rgba(69,18,96,.08)';
+  ctx.strokeStyle = guia; ctx.lineWidth = 1.2 / Math.sqrt(c.z);
+  for (let r = 120; r <= 540; r += 30) { ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke(); }
+  const nitida = eOut(prog(t, 5.9, 6.4));
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const entra = eOut(prog(t, 0, .7));
+  for (const l of [...amarelas, ...roxas]) {
+    const a = 1 - nitida; if (a <= 0) break;
+    const ini = l.roxo ? (roxas.indexOf(l) * .03) : (.15 + amarelas.indexOf(l) * .025);
+    const vis = clamp((entra * 1.2 - ini) / .8);
+    if (vis <= 0) continue;
+    const n = l.pts.length - 1, ate = Math.max(1, Math.round(n * vis));
+    ctx.beginPath();
+    for (let j = 0; j <= ate; j++) { const [x, y] = ponto(l, j / n, t); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.strokeStyle = l.roxo ? COR_ROXA : COR_AMAR; ctx.lineWidth = l.roxo ? LARG_ROXO : LARG_AMAR;
+    ctx.globalAlpha = a; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (nitida > 0) {
+    ctx.save(); ctx.globalAlpha = nitida; ctx.translate(OX, OY); ctx.scale(S, S);
+    LOGO.parts.forEach((p, i) => ctx.drawImage(img(i, p.kind === 'roxo' ? COR_ROXA : COR_AMAR), p.x, p.y));
+    ctx.restore();
+  }
+}
+// desfoque de movimento: média de subquadros dentro de meio quadro (obturador de 180°), como câmera de cinema
+const acum = document.createElement('canvas'); acum.width = W; acum.height = H;
+function render(t) {
+  const N = 6, g = acum.getContext('2d');
+  for (let i = 0; i < N; i++) {
+    desenhar(Math.max(0, t - (i / N) * (.5 / 30)));
+    g.globalAlpha = 1 / (i + 1); g.drawImage(cv, 0, 0);
+  }
+  g.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(acum, 0, 0);
+}
+const PRONTO_TUDO = Promise.all(IMGS.map(im => im.decode())).then(prepararCamera);
+if (!location.search.includes('render=1')) {
+  PRONTO_TUDO.then(() => { const t0 = performance.now(); const loop = () => { render(((performance.now() - t0) / 1000) % (DUR + .6)); requestAnimationFrame(loop); }; loop(); });
+}
+</script>
+</body>
+</html>
