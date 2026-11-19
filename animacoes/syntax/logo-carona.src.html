@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo carona SYNTAX</title>
+<style>
+/*@FONTES@*/
+  html,body{margin:0;height:100%;background:#222;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;height:min(100vh,177.78vw);width:auto;aspect-ratio:9/16;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Versão "carona" da logo em linhas. Cada linha anda como um trilho: a ponta vai na frente e o corpo segue
+// exatamente pelo mesmo caminho. As linhas orbitam em anéis, saem da órbita e percorrem o próprio traço
+// da letra, deixando-o desenhado. A câmera vai montada na ponta de uma linha (virando junto, a linha sempre
+// "para a frente"), solta quando ela assenta, voa até a próxima e pega carona de novo. No fim o zoom abre.
+// ARQUIVO-FONTE: edite este e rode `python3 montar.py logo-carona`.
+// Fundo pela URL: ?fundo=claro (padrão) | roxo | amarelo
+/*@LOGO@*/
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const ROXO = '#451260', AMAR = '#fdc600', BRANCO = '#ffffff', PAPEL = '#fdfbf7';
+const FUNDO = (new URLSearchParams(location.search).get('fundo') || 'claro');
+const COR_ROXA = FUNDO === 'roxo' ? BRANCO : ROXO;
+const COR_AMAR = FUNDO === 'amarelo' ? BRANCO : AMAR;
+let DUR = 9;
+const CENAS = [{ nome: 'logo-carona', a: 0, d: 9 }];
+const LARG = 920, CX = W / 2, CY = H / 2;
+const S = LARG / LOGO.W, OX = CX - LARG / 2, OY = CY - LOGO.H * S / 2;
+
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// linhas centrais dos traços da logo (coordenadas da logo, 2000 px de largura), na ordem em que se formam
+const TRACOS = [
+  { roxo: true, p: [[385, 375], [330, 318], [292, 284], [255, 274], [215, 285], [195, 315], [202, 345], [232, 366], [282, 396], [316, 426], [330, 462], [320, 496], [290, 520], [255, 526], [224, 514], [198, 488], [128, 414]] },   // S
+  { roxo: true, p: [[500, 276], [535, 333], [568, 377], [592, 398]] },                                    // Y braço esquerdo
+  { roxo: true, p: [[775, 128], [700, 245], [622, 368], [596, 412], [592, 600], [592, 756]] },            // Y braço direito + haste
+  { roxo: true, p: [[812, 756], [812, 450], [812, 288], [828, 268], [848, 290], [882, 370], [916, 450], [936, 516], [956, 528], [963, 500], [963, 300], [962, 76]] }, // N
+  { roxo: true, p: [[1062, 276], [1140, 276], [1224, 276]] },                                             // T barra
+  { roxo: true, p: [[1143, 284], [1143, 520], [1143, 752]] },                                             // T haste
+  { roxo: true, p: [[1302, 534], [1338, 412], [1364, 302], [1386, 266], [1406, 292], [1440, 420], [1478, 560], [1520, 748]] }, // A
+  { roxo: true, p: [[1336, 462], [1430, 462]] },                                                          // A barra
+  { roxo: true, p: [[1497, 136], [1580, 255], [1665, 376], [1700, 422], [1810, 590], [1925, 760]] },     // X descendo
+  { roxo: true, p: [[1760, 274], [1720, 330], [1680, 386], [1630, 458], [1586, 524]] },                  // X subindo
+  { roxo: false, p: [[62, 438], [140, 518], [222, 600]] },
+  { roxo: false, p: [[287, 202], [362, 282], [440, 362]] },
+  { roxo: false, p: [[724, 296], [688, 345], [652, 392], [636, 425], [636, 560], [636, 684]] },
+  { roxo: false, p: [[852, 452], [880, 522], [904, 562], [935, 572], [975, 572], [1000, 552], [1006, 500], [1006, 360], [1006, 212]] },
+  { roxo: false, p: [[1066, 320], [1086, 332], [1090, 460], [1090, 586]] },
+  { roxo: false, p: [[1180, 476], [1180, 610], [1180, 740]] },
+  { roxo: false, p: [[1406, 166], [1470, 400], [1540, 650]] },
+  { roxo: false, p: [[1500, 226], [1555, 296], [1606, 368], [1614, 398], [1570, 476]] },
+  { roxo: false, p: [[1790, 310], [1742, 374], [1736, 404], [1764, 444], [1852, 566]] },
+];
+const LARG_ROXO = 40 * S, LARG_AMAR = 21 * S;
+
+// Catmull-Rom + reamostragem por comprimento: linha suave com N pontos igualmente espaçados
+function suavizar(P) {
+  if (P.length < 3) return P;
+  const out = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(i - 1, 0)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(i + 2, P.length - 1)];
+    for (let j = 0; j < 12; j++) {
+      const t = j / 12, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map(k => .5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)));
+    }
+  }
+  out.push(P[P.length - 1]); return out;
+}
+function reamostrar(P, passo) {
+  const acc = [0];
+  for (let i = 1; i < P.length; i++) acc.push(acc[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const L = acc[acc.length - 1], n = Math.max(2, Math.round(L / passo)), out = [];
+  let j = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = L * i / n; while (j < P.length - 2 && acc[j + 1] < d) j++;
+    const k = (d - acc[j]) / (acc[j + 1] - acc[j] || 1);
+    out.push([lerp(P[j][0], P[j + 1][0], k), lerp(P[j][1], P[j + 1][1], k)]);
+  }
+  return { pts: out, L };
+}
+
+// ---------- caminhos: anel (órbita) -> curva de saída -> traço da letra ----------
+const V = 520;                 // velocidade das linhas (px/s, no tamanho final da logo)
+const TAU = .35;               // desaceleração ao assentar
+const R0 = rng(27);
+const LINHAS = TRACOS.map((tr, i) => {
+  const tela = tr.p.map(([x, y]) => [OX + x * S, OY + y * S]);
+  const { pts, L } = reamostrar(suavizar(tela), 3);
+  return { ...tr, traco: pts, L, i };
+});
+const roxas = LINHAS.filter(l => l.roxo), amarelas = LINHAS.filter(l => !l.roxo);
+roxas.forEach((l, j) => { l.raio = 150 + j * 27; l.sentido = j % 2 ? -1 : 1; });
+amarelas.forEach((l, j) => { l.raio = 470 - j * 13; l.sentido = j % 2 ? 1 : -1; });
+
+function tabela(P) {  // polilinha com comprimentos acumulados, para achar o ponto a uma distância
+  const acc = [0];
+  for (let i = 1; i < P.length; i++) acc.push(acc[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  return { P, acc, L: acc[acc.length - 1] };
+}
+function noPonto(T, d) {
+  d = clamp(d, 0, T.L); let lo = 0, hi = T.acc.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T.acc[m] <= d) lo = m; else hi = m; }
+  const k = (d - T.acc[lo]) / ((T.acc[hi] - T.acc[lo]) || 1), a = T.P[lo], b = T.P[hi];
+  return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
+}
+LINHAS.forEach(l => {
+  const s0 = l.traco[0], s1 = l.traco[Math.min(6, l.traco.length - 1)];
+  const dirT = Math.atan2(s1[1] - s0[1], s1[0] - s0[0]);
+  // sai do anel um pouco "antes" do ângulo do começo do traço, para chegar fazendo a curva
+  l.aSai = Math.atan2(s0[1] - CY, s0[0] - CX) - l.sentido * 1.1;
+  const p0 = [CX + Math.cos(l.aSai) * l.raio, CY + Math.sin(l.aSai) * l.raio];
+  const tg = l.aSai + l.sentido * Math.PI / 2, dist = Math.hypot(s0[0] - p0[0], s0[1] - p0[1]), k = Math.max(120, dist * .55);
+  const c1 = [p0[0] + Math.cos(tg) * k, p0[1] + Math.sin(tg) * k], c2 = [s0[0] - Math.cos(dirT) * k * .8, s0[1] - Math.sin(dirT) * k * .8];
+  const conex = [];
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60, u = 1 - t;
+    conex.push([0, 1].map(j => u * u * u * p0[j] + 3 * u * u * t * c1[j] + 3 * u * t * t * c2[j] + t * t * t * s0[j]));
+  }
+  l.saida = tabela([...conex, ...l.traco.slice(1)]);   // curva de saída + traço da letra
+});
+
+// ---------- horários: quem a câmera acompanha e quando cada linha assenta ----------
+const CARONA = [0, 3, 6, 8];          // S, N, A, X
+const GAP = .5;
+let t = .9;
+CARONA.forEach((idx, j) => { const l = LINHAS[idx]; l.tSai = t; l.tFim = t + (l.saida.L / V) + TAU / 2; t = l.tFim + GAP; });
+const fimC = idx => LINHAS[idx].tFim;
+const EXTRA = { 2: [0, .3], 1: [0, .5], 4: [3, .25], 5: [3, .45], 7: [6, .3], 9: [8, .15] };
+for (const [i, [ref, dt]] of Object.entries(EXTRA)) { const l = LINHAS[i]; l.tFim = fimC(ref) + dt; l.tSai = l.tFim - l.saida.L / V - TAU / 2; }
+amarelas.forEach((l, j) => { l.tFim = fimC(8) - .5 + j * .12; l.tSai = l.tFim - l.saida.L / V - TAU / 2; });
+const FIM_CARONA = fimC(8);
+DUR = Math.max(...LINHAS.map(l => l.tFim)) + 1.6;
+CENAS[0].d = DUR;
+
+// distância da ponta ao longo do caminho de saída (negativa = ainda no anel)
+function cabeca(l, t) {
+  const u = l.tFim - t;
+  const g = u <= 0 ? 0 : u > TAU ? u - TAU / 2 : u * u / (2 * TAU);
+  return l.saida.L - V * g;
+}
+// ponto a uma distância d do caminho: d < 0 fica no anel (andando para trás ao longo da órbita)
+function caminho(l, d) {
+  if (d >= 0) return noPonto(l.saida, d);
+  const a = l.aSai + l.sentido * d / l.raio;
+  return [CX + Math.cos(a) * l.raio, CY + Math.sin(a) * l.raio];
+}
+function tangente(l, d) {
+  const [x0, y0] = caminho(l, d - 3), [x1, y1] = caminho(l, d + 3);
+  return Math.atan2(y1 - y0, x1 - x0);
+}
+
+const IMGS = LOGO.parts.map(p => { const im = new Image(); im.src = p.data; return im; });
+const tint = {};
+function img(i, cor) {
+  const key = i + cor; if (tint[key]) return tint[key];
+  const p = LOGO.parts[i], c = document.createElement('canvas'); c.width = p.w; c.height = p.h;
+  const g = c.getContext('2d'); g.drawImage(IMGS[i], 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = cor; g.fillRect(0, 0, p.w, p.h);
+  return tint[key] = c;
+}
+
+// ---------- câmera ----------
+const ss = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+function alvoCamera(t) {
+  let sx = 0, sy = 0, cx = 0, cy = 0, sw = 0;
+  CARONA.forEach((idx, j) => {
+    const l = LINHAS[idx];
+    const ini = j ? fimC(CARONA[j - 1]) : -1;
+    const w = (j ? ss(ini - .05, ini + .4, t) : 1) * (j < CARONA.length - 1 ? 1 - ss(l.tFim - .05, l.tFim + .4, t) : 1);
+    if (w <= 1e-4) return;
+    const d = Math.min(cabeca(l, t), l.saida.L - 4), [x, y] = caminho(l, d), a = tangente(l, d);
+    sx += x * w; sy += y * w; cx += Math.cos(a) * w; cy += Math.sin(a) * w; sw += w;
+  });
+  return [sx / sw, sy / sw, Math.atan2(cy, cx)];
+}
+const CAM = [], CAM_HZ = 240;
+function prepararCamera() {
+  let [x, y, a] = alvoCamera(0), vx = 0, vy = 0, rot = -a - Math.PI / 2;
+  for (let i = 0; i <= DUR * CAM_HZ + 2; i++) {
+    const t = i / CAM_HZ, dt = 1 / CAM_HZ, [tx, ty, ta] = alvoCamera(t);
+    const w = 22, ax = w * w * (tx - x) - 2 * w * vx, ay = w * w * (ty - y) - 2 * w * vy;
+    vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+    let d = (-ta - Math.PI / 2) - rot; d = Math.atan2(Math.sin(d), Math.cos(d));
+    rot += d * (1 - Math.exp(-dt * 9));
+    CAM.push([x, y, rot]);
+  }
+}
+function camera(t) {
+  const f = clamp(t, 0, DUR) * CAM_HZ, i = Math.min(Math.floor(f), CAM.length - 2), k = f - i;
+  const a = CAM[i], b = CAM[i + 1];
+  let x = lerp(a[0], b[0], k), y = lerp(a[1], b[1], k);
+  let d = b[2] - a[2]; d = Math.atan2(Math.sin(d), Math.cos(d)); let rot = a[2] + d * k;
+  let respiro = 0;
+  CARONA.forEach((idx, j) => { if (j) respiro = Math.max(respiro, Math.exp(-Math.pow((t - fimC(CARONA[j - 1]) - .2) / .25, 2))); });
+  const abre = eIO(prog(t, FIM_CARONA - .05, FIM_CARONA + 1.3));
+  const z = Math.exp(lerp(Math.log(3.2 - .9 * respiro), 0, abre));
+  rot = Math.atan2(Math.sin(rot), Math.cos(rot)) * (1 - abre);
+  x = lerp(x, CX, abre); y = lerp(y, CY, abre);
+  return { x, y, z, rot, oy: lerp(H * .12, 0, abre) };
+}
+
+function desenhar(t) {
+  const bg = { claro: PAPEL, roxo: ROXO, amarelo: AMAR }[FUNDO] || PAPEL;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const c = camera(t);
+  ctx.translate(W / 2, H / 2 - c.oy); ctx.rotate(c.rot); ctx.scale(c.z, c.z); ctx.translate(-c.x, -c.y);
+  const guia = FUNDO === 'roxo' ? 'rgba(255,255,255,.07)' : 'rgba(69,18,96,.07)';
+  ctx.strokeStyle = guia; ctx.lineWidth = 1.2 / Math.sqrt(c.z);
+  for (let r = 123; r <= 500; r += 27) { ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke(); }
+  const nitida = eOut(prog(t, DUR - 1.0, DUR - .6));
+  const entra = eOut(prog(t, 0, .6));
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const l of [...amarelas, ...roxas]) {
+    const a = 1 - nitida; if (a <= 0) break;
+    const d1 = cabeca(l, t), comp = l.L * entra, d0 = d1 - comp;
+    ctx.beginPath();
+    const n = Math.max(2, Math.ceil(comp / 4));
+    for (let j = 0; j <= n; j++) { const [x, y] = caminho(l, lerp(d0, d1, j / n)); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.strokeStyle = l.roxo ? COR_ROXA : COR_AMAR; ctx.lineWidth = l.roxo ? LARG_ROXO : LARG_AMAR;
+    ctx.globalAlpha = a; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (nitida > 0) {
+    ctx.save(); ctx.globalAlpha = nitida; ctx.translate(OX, OY); ctx.scale(S, S);
+    LOGO.parts.forEach((p, i) => ctx.drawImage(img(i, p.kind === 'roxo' ? COR_ROXA : COR_AMAR), p.x, p.y));
+    ctx.restore();
+  }
+}
+// desfoque de movimento: média de subquadros (obturador de 180°)
+const acum = document.createElement('canvas'); acum.width = W; acum.height = H;
+function render(t) {
+  const N = 6, g = acum.getContext('2d');
+  for (let i = 0; i < N; i++) {
+    desenhar(Math.max(0, t - (i / N) * (.5 / 30)));
+    g.globalAlpha = 1 / (i + 1); g.drawImage(cv, 0, 0);
+  }
+  g.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(acum, 0, 0);
+}
+const PRONTO_TUDO = Promise.all(IMGS.map(im => im.decode())).then(prepararCamera);
+if (!location.search.includes('render=1')) {
+  PRONTO_TUDO.then(() => { const t0 = performance.now(); const loop = () => { render(((performance.now() - t0) / 1000) % (DUR + .6)); requestAnimationFrame(loop); }; loop(); });
+}
+</script>
+</body>
+</html>
